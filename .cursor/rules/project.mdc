@@ -1,0 +1,13 @@
+---
+description: Project rules for devtoolwidget AI assistants
+globs:
+alwaysApply: true
+---
+
+# devtoolwidget
+
+This repository's rules and context for AI assistants live in `AGENTS.md` at the
+repository root. It is the single source of truth for assistant conventions, and it
+defers to `docs/PRD.md` for product requirements.
+
+Read and follow `AGENTS.md`. Do not duplicate or override those rules here.
