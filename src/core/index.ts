@@ -6,6 +6,7 @@
  * formatting and id generation).
  */
 export * from './buffers/ring-buffer';
+export * from './clear';
 export * from './domain';
 export * from './format/formatters';
 export * from './ids/id';
