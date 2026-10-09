@@ -1,9 +1,13 @@
 /**
- * The `protocol` layer: cross-context message types, Zod schemas, the typed
- * channel abstraction and schema versioning (PRD 8.2).
+ * The `protocol` layer: cross-context message types, Zod schemas, parse helpers
+ * and the typed channel abstraction, with schema versioning (PRD 8.2, ADR 0009).
  *
- * Placeholder that proves the layer is wired into the toolchain.
+ * It may import `core` (payloads carry core domain data and return `Result`);
+ * it must not import `platform`, `capture`, `ui` or `entrypoints`.
  */
-export function protocolLayerName(): string {
-  return 'protocol';
-}
+export * from './channel';
+export * from './errors';
+export * from './messages';
+export * from './parse';
+export * from './payloads';
+export * from './version';
