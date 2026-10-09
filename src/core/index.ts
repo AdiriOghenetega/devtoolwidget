@@ -12,3 +12,4 @@ export * from './ids/id';
 export * from './redaction/redact';
 export * from './result';
 export * from './serialization/serialize-value';
+export * from './settings';

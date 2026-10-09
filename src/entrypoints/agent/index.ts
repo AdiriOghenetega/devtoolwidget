@@ -6,6 +6,7 @@ import { installAgentBridge } from '../../capture/bridge';
  * capturing handshake listener; all logic lives in `capture/bridge`.
  */
 export default defineContentScript({
+  registration: 'runtime',
   matches: ['<all_urls>'],
   runAt: 'document_start',
   world: 'MAIN',

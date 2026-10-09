@@ -473,3 +473,6 @@ export function createFakePorts(options: FakePortsOptions = {}): FakePorts {
     sidePanel: createFakeSidePanelPort(),
   };
 }
+
+export * from './permissions';
+export * from './site-scripts';

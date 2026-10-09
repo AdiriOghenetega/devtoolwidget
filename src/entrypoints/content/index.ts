@@ -11,6 +11,7 @@ import { hostWidgetRoot } from '../../ui/widget-root';
  * Contains no business logic beyond wiring.
  */
 export default defineContentScript({
+  registration: 'runtime',
   matches: ['<all_urls>'],
   runAt: 'document_start',
   main(ctx) {

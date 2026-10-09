@@ -3,6 +3,8 @@ import type { Millis, Result, TabId } from '../../core';
 import type { PlatformError } from './errors';
 
 export * from './errors';
+export * from './permissions';
+export * from './site-scripts';
 
 /** Removes a previously registered listener. */
 export type Unsubscribe = () => void;
