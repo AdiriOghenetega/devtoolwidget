@@ -97,3 +97,23 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
     cookies: toBytes(4 * KIB),
   },
 };
+
+/** Depth and size caps for the safe serializer (PRD FR-3). */
+export interface SerializerLimits {
+  /** Maximum nesting depth before a container is replaced by a marker. */
+  readonly maxDepth: number;
+  /** Maximum entries copied from one array, object, Map or Set. */
+  readonly maxEntries: number;
+  /** Strings longer than this are truncated with an ellipsis. */
+  readonly maxStringLength: number;
+  /** Total number of values serialized before the size cap is hit. */
+  readonly maxTotalNodes: number;
+}
+
+/** Default serializer limits. */
+export const DEFAULT_SERIALIZER_LIMITS: SerializerLimits = {
+  maxDepth: 6,
+  maxEntries: 50,
+  maxStringLength: 200,
+  maxTotalNodes: 1_000,
+};
