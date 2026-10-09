@@ -1,10 +1,8 @@
 /**
- * The `core` layer: pure, browser-agnostic domain logic.
+ * The `core` layer: pure, browser-agnostic domain logic (PRD section 8.2).
  *
- * Placeholder that proves the layer is wired into lint, typecheck, tests and the
- * dependency rule. Real domain types, the insights engine, scoring, redaction,
- * ring buffers, formatters, the HAR builder and diffing live here (PRD 8.2).
+ * This barrel is the layer's public API. It re-exports the domain model
+ * (`./domain`) and the `Result` helpers (`./result`).
  */
-export function coreLayerName(): string {
-  return 'core';
-}
+export * from './domain';
+export * from './result';
