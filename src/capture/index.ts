@@ -10,3 +10,5 @@
 export function captureLayerName(): string {
   return 'capture';
 }
+
+export * from './pipeline';
