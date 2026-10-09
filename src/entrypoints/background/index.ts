@@ -1,18 +1,44 @@
 import { browser } from 'wxt/browser';
-import { toTabId } from '../../core';
+import { toTabId, type InstalledReason } from '../../core';
+import { runFirstRun } from '../../capture/onboarding/first-run-flow';
 import { createCommandRouter, TabSessionRegistry } from '../../capture/session';
-import { createChromePorts, type BrowserApi } from '../../platform/chrome';
+import { SettingsService } from '../../capture/settings/settings-service';
+import { SiteAccessService } from '../../capture/site-access/site-access-service';
+import {
+  createChromePorts,
+  createPermissionsPort,
+  createSiteScriptsPort,
+  type BrowserApi,
+  type PermissionsApi,
+  type SiteScriptsApi,
+} from '../../platform/chrome';
 import { parseCommand } from '../../protocol';
+
+function toInstalledReason(reason: string | undefined): InstalledReason {
+  if (reason === 'install' || reason === 'update') {
+    return reason;
+  }
+  return 'unknown';
+}
 
 /**
  * Background service worker (PRD 8.1). Wires the platform adapters, the per-tab
- * session registry and the typed command router, and routes validated runtime
- * messages. Contains no business logic beyond wiring.
+ * session registry, the typed command router, the settings service, the
+ * site-access service and the first-run flow. Contains no business logic.
  */
 export default defineBackground(() => {
   const ports = createChromePorts(browser as unknown as BrowserApi);
   const registry = new TabSessionRegistry(ports.storage);
   const router = createCommandRouter({ registry });
+  const settings = new SettingsService(ports.storage);
+  const siteAccess = new SiteAccessService({
+    permissions: createPermissionsPort(browser as unknown as PermissionsApi),
+    siteScripts: createSiteScriptsPort(browser as unknown as SiteScriptsApi),
+  });
+
+  siteAccess.onRevoked(() => {
+    // The service unregisters the scripts; nothing else to do here yet.
+  });
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const parsed = parseCommand(message);
@@ -26,5 +52,14 @@ export default defineBackground(() => {
         sendResponse(outcome);
       });
     return true;
+  });
+
+  browser.runtime.onInstalled.addListener((details) => {
+    void runFirstRun(settings, toInstalledReason(details.reason));
+    void siteAccess.sync();
+  });
+
+  browser.runtime.onStartup.addListener(() => {
+    void siteAccess.sync();
   });
 });

@@ -1,4 +1,16 @@
+import { err, ok, type Result } from '../../core';
 import { isPlatformError, platformError, type PlatformError } from '../ports/errors';
+
+/** Runs an operation, converting a thrown browser error into a `Result`. */
+export async function attempt<T>(
+  operation: () => Promise<T> | T,
+): Promise<Result<T, PlatformError>> {
+  try {
+    return ok(await operation());
+  } catch (error: unknown) {
+    return err(toPlatformError(error));
+  }
+}
 
 const QUOTA_PATTERN = /quota|exceeded|too much data/i;
 const NOT_FOUND_PATTERN = /no tab with id|no tab|could not find|cannot find|not found/i;
