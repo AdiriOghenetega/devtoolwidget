@@ -37,12 +37,37 @@ export type SerializedValue =
       readonly entries: readonly SerializedObjectEntry[];
       readonly truncated: boolean;
     }
+  | {
+      readonly type: 'map';
+      readonly entries: readonly SerializedMapEntry[];
+      readonly truncated: boolean;
+    }
+  | {
+      readonly type: 'set';
+      readonly items: readonly SerializedValue[];
+      readonly truncated: boolean;
+    }
+  | {
+      readonly type: 'typed-array';
+      readonly kind: string;
+      readonly length: number;
+      readonly preview: readonly string[];
+      readonly truncated: boolean;
+    }
+  | { readonly type: 'date'; readonly iso: string }
+  | { readonly type: 'regexp'; readonly source: string; readonly flags: string }
   | { readonly type: 'circular'; readonly reference: string }
   | { readonly type: 'unserializable'; readonly reason: string };
 
 /** One key/value pair of a serialized object. */
 export interface SerializedObjectEntry {
   readonly key: string;
+  readonly value: SerializedValue;
+}
+
+/** One key/value pair of a serialized Map. */
+export interface SerializedMapEntry {
+  readonly key: SerializedValue;
   readonly value: SerializedValue;
 }
 
