@@ -68,6 +68,7 @@ const exportReportCommandSchema = envelope(
   'command.exportReport',
   z.object({ format: exportFormatSchema }),
 );
+const pingCommandSchema = envelope('command.ping', z.object({}));
 
 const commandMessageSchemas = [
   clearStorageCommandSchema,
@@ -76,6 +77,7 @@ const commandMessageSchemas = [
   toggleDisableCacheCommandSchema,
   getSnapshotCommandSchema,
   exportReportCommandSchema,
+  pingCommandSchema,
 ] as const;
 
 /** Every command message (PRD 8.2). */
@@ -101,6 +103,7 @@ const exportReportResultSchema = envelope(
   'result.exportReport',
   z.object({ format: exportFormatSchema, filename: z.string() }),
 );
+const pingResultSchema = envelope('result.ping', z.object({ pong: z.boolean() }));
 
 const resultMessageSchemas = [
   clearStorageResultSchema,
@@ -109,6 +112,7 @@ const resultMessageSchemas = [
   toggleDisableCacheResultSchema,
   getSnapshotResultSchema,
   exportReportResultSchema,
+  pingResultSchema,
 ] as const;
 
 /** Every command result message (PRD 8.2). */
@@ -148,6 +152,7 @@ const COMMAND_TYPES = [
   'command.toggleDisableCache',
   'command.getSnapshot',
   'command.exportReport',
+  'command.ping',
 ] as const;
 const RESULT_TYPES = [
   'result.clearStorage',
@@ -156,6 +161,7 @@ const RESULT_TYPES = [
   'result.toggleDisableCache',
   'result.getSnapshot',
   'result.exportReport',
+  'result.ping',
 ] as const;
 
 export const EVENT_MESSAGE_TYPES: ReadonlySet<string> = new Set(EVENT_TYPES);

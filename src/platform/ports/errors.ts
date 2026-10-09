@@ -8,6 +8,7 @@ export type PlatformErrorCode =
   | 'invalid-argument'
   | 'quota-exceeded'
   | 'version-mismatch'
+  | 'timeout'
   | 'unknown';
 
 /** A structured, non-throwing platform error. */

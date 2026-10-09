@@ -18,5 +18,15 @@ export default defineConfig({
   manifest: {
     name: 'devToolWidget',
     description: 'Diagnose and act, in one click.',
+    permissions: [
+      'storage',
+      'tabs',
+      'scripting',
+      'activeTab',
+      'browsingData',
+      'declarativeNetRequest',
+      'commands',
+      'sidePanel',
+    ],
   },
 });

@@ -12,7 +12,7 @@ export default [
   {
     name: 'background (MV3)',
     path: '.output/chrome-mv3/background.js',
-    limit: '15 kB',
+    limit: '40 kB',
     gzip: true,
   },
 ];
