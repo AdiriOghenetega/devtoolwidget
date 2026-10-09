@@ -8,12 +8,12 @@ file and the PRD disagree, the PRD wins and this file must be corrected.
 ## 1. Project summary
 
 devtoolwidget is an open-source browser extension that gives developers one
-always-available, glanceable panel answering: *what is wrong with this page right now,
-and what can I do about it?* It replaces tab-hopping across browser DevTools with live
+always-available, glanceable panel answering: _what is wrong with this page right now,
+and what can I do about it?_ It replaces tab-hopping across browser DevTools with live
 diagnosis, ranked plain-language findings and one-click fixes.
 
 - Tagline: **Diagnose and act, in one click.**
-- Differentiator: it is the summary layer *on top of* DevTools, not a DevTools clone.
+- Differentiator: it is the summary layer _on top of_ DevTools, not a DevTools clone.
 - Targets: Chromium (Chrome, Edge, Brave) first; Firefox build via WXT with feature
   detection; Deep mode is Chromium-only.
 - Privacy-first: no network calls from the extension, no telemetry, all data stays on
@@ -32,8 +32,8 @@ of allowed dependencies.
   versioning.
 - **platform** — defines ports (interfaces) for storage, tabs, browsingData, scripting,
   debugger and clock, and provides real adapters plus in-memory fakes for tests.
-- **capture** — collectors (console, network, performance) that depend only on ports and
-  core.
+- **capture** — collectors (console, network, performance) that depend only on core,
+  protocol and the platform ports (interfaces).
 - **ui** — components, signal-based stores and screens. Depends on core and protocol
   only.
 - **entrypoints** (WXT) — wires everything together and contains **no business logic**.
@@ -41,8 +41,15 @@ of allowed dependencies.
 **Dependency rule (enforced in CI via dependency-cruiser or eslint-plugin-boundaries):**
 
 - `entrypoints` may import anything.
-- `ui`, `capture` and `platform` may import `core` and `protocol`.
+- `platform` and `ui` may import `core` and `protocol`.
+- `capture` may import `core`, `protocol` and the **platform ports (interfaces) only**; it
+  must never import the platform adapters (`platform/chrome`, `platform/firefox`), the
+  fakes (`platform/fakes`) or the platform barrel. Tests may import the fakes.
 - `core` and `protocol` import **nothing** from the other layers.
+
+The rule is encoded in `.dependency-cruiser.cjs`; `tests/architecture/dependency-rule.test.ts`
+cruises a fixture that intentionally violates it to prove detection, and the real `src`
+tree to prove compliance. See ADR 0003.
 
 When adding an import, confirm it respects the rule. A new cross-layer dependency is an
 architectural change and requires an ADR (see §7).

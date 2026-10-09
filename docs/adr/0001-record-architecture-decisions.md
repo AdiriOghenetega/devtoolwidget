@@ -20,7 +20,7 @@ Record (ADR) in `docs/adr/`, one Markdown file per decision, numbered sequential
 
 An ADR captures the status, the context, the decision, and its consequences. Once
 accepted, an ADR is immutable: supersede it with a new ADR rather than editing history.
-The PRD remains the source of truth for *what* to build; ADRs record *how* we chose to
+The PRD remains the source of truth for _what_ to build; ADRs record _how_ we chose to
 build it and why.
 
 Significant decisions include, but are not limited to:
