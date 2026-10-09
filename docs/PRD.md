@@ -131,10 +131,10 @@ Compatibility and reliability
 • core is pure TypeScript with no browser APIs: domain types, insights engine, scoring, redaction, ring buffer, formatters, HAR builder, diffing.
 • protocol holds message types and Zod schemas plus a typed channel abstraction with versioning.
 • platform defines ports (interfaces) for storage, tabs, browsingData, scripting, debugger, clock, and provides real adapters plus in-memory fakes for tests.
-• capture holds collectors (console, network, performance) that depend only on ports and core.
+• capture holds collectors (console, network, performance) that depend only on core, protocol and the platform ports (interfaces).
 • ui holds components, signal-based stores and screens. It depends on core and protocol only.
 • entrypoints (WXT) wires everything together and contains no business logic.
-Dependency rule: entrypoints may import anything; ui, capture and platform may import core and protocol; core and protocol import nothing from the others. Enforce this in CI with dependency-cruiser or eslint-plugin-boundaries.
+Dependency rule: entrypoints may import anything; platform, ui and capture may import core and protocol; capture may additionally import the platform ports (interfaces) but never the platform adapters (chrome/firefox) or the in-memory fakes (tests may import the fakes); core and protocol import nothing from the other layers. Enforce this in CI with dependency-cruiser or eslint-plugin-boundaries.
 8.3 Folder structure
 devtoolwidget/
   docs/            PRD.md, ARCHITECTURE.md, adr/
