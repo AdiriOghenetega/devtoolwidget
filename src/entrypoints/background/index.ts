@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { toTabId, type InstalledReason } from '../../core';
 import { runFirstRun } from '../../capture/onboarding/first-run-flow';
+import { TabSessionStore } from '../../capture/pipeline';
 import { createCommandRouter, TabSessionRegistry } from '../../capture/session';
 import { SettingsService } from '../../capture/settings/settings-service';
 import { SiteAccessService } from '../../capture/site-access/site-access-service';
@@ -61,5 +62,10 @@ export default defineBackground(() => {
 
   browser.runtime.onStartup.addListener(() => {
     void siteAccess.sync();
+  });
+
+  const pipelineSessions = new TabSessionStore(ports.storage);
+  browser.tabs.onRemoved.addListener((tabId) => {
+    void pipelineSessions.clear(toTabId(tabId));
   });
 });
