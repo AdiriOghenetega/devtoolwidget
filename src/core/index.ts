@@ -9,6 +9,7 @@ export * from './buffers/ring-buffer';
 export * from './domain';
 export * from './format/formatters';
 export * from './ids/id';
+export * from './network';
 export * from './performance';
 export * from './redaction/redact';
 export * from './result';
