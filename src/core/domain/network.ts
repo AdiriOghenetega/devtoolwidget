@@ -16,6 +16,26 @@ export type RedactedHeaderValue = string | readonly string[];
 /** Redacted request/response headers. */
 export type RedactedHeaders = Readonly<Record<string, RedactedHeaderValue>>;
 
+/** WebSocket open/close metadata (PRD FR-4). */
+export interface WebSocketMeta {
+  readonly opened: boolean;
+  readonly closed: boolean;
+  readonly code?: number;
+}
+
+/**
+ * Extra network details captured alongside the timing/status data (PRD FR-4):
+ * redirects, the initiator type, an optional simulated-latency flag, and
+ * WebSocket open/close metadata.
+ */
+export interface NetworkMeta {
+  readonly redirected?: boolean;
+  readonly finalUrl?: string;
+  readonly initiatorType?: string;
+  readonly simulatedLatencyMs?: number;
+  readonly webSocket?: WebSocketMeta;
+}
+
 /** A single captured network request (PRD section 9, FR-4). */
 export interface NetworkEntry {
   readonly id: string;
@@ -30,4 +50,7 @@ export interface NetworkEntry {
   readonly timing: NetworkTiming;
   readonly failure?: string;
   readonly headers?: RedactedHeaders;
+  /** Opt-in, size-capped, redacted response body preview. */
+  readonly bodyPreview?: string;
+  readonly meta?: NetworkMeta;
 }
