@@ -45,7 +45,8 @@ of allowed dependencies.
 - `capture` may import `core`, `protocol` and the **platform ports (interfaces) only**; it
   must never import the platform adapters (`platform/chrome`, `platform/firefox`), the
   fakes (`platform/fakes`) or the platform barrel. Tests may import the fakes.
-- `core` and `protocol` import **nothing** from the other layers.
+- `core` imports **nothing** from the other layers; `protocol` may import `core` only
+  (never `platform`, `capture`, `ui` or `entrypoints`).
 
 The rule is encoded in `.dependency-cruiser.cjs`; `tests/architecture/dependency-rule.test.ts`
 cruises a fixture that intentionally violates it to prove detection, and the real `src`

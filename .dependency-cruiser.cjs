@@ -9,11 +9,12 @@ module.exports = {
       to: { path: 'src/(protocol|platform|capture|ui|entrypoints)/' },
     },
     {
-      name: 'protocol-must-not-import-other-layers',
+      name: 'protocol-may-only-import-core',
       severity: 'error',
-      comment: 'protocol imports nothing from the other layers (PRD 8.2).',
+      comment:
+        'protocol may import core only; platform, capture, ui and entrypoints are forbidden (PRD 8.2, ADR 0009).',
       from: { path: 'src/protocol/' },
-      to: { path: 'src/(core|platform|capture|ui|entrypoints)/' },
+      to: { path: 'src/(platform|capture|ui|entrypoints)/' },
     },
     {
       name: 'platform-may-only-import-core-and-protocol',

@@ -24,7 +24,7 @@ export type SerializedValue =
       readonly type: 'error';
       readonly name: string;
       readonly message: string;
-      readonly stack?: string;
+      readonly stack?: string | undefined;
     }
   | { readonly type: 'node'; readonly nodeName: string }
   | {
