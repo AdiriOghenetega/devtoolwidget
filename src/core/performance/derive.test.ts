@@ -96,6 +96,13 @@ describe('findOversizedImages', () => {
     expect(findOversizedImages([big(10, 50_000, 1_000)])).toEqual([]);
     expect(findOversizedImages([big(10, 200_000, 1_000)], { minRatio: 5 })[0]?.ratio).toBe(200);
   });
+
+  it('honours a custom natural-pixel floor', () => {
+    const flagged = findOversizedImages([big(10, 50_000, 1_000)], {
+      minNaturalPixels: 10_000,
+    });
+    expect(flagged[0]?.ratio).toBe(50);
+  });
 });
 
 describe('buildCapabilityReport', () => {

@@ -117,6 +117,37 @@ describe('PerformanceCollector', () => {
     expect(vitals.subscribed()).toEqual([]);
   });
 
+  it('maps every vital, with and without attribution', () => {
+    const vitals = createVitals();
+    const harness = setup(vitals.client);
+    harness.collector.start();
+
+    vitals.fire('LCP', { name: 'LCP', value: 1_200, rating: 'good' });
+    vitals.fire('CLS', {
+      name: 'CLS',
+      value: 0.05,
+      rating: 'good',
+      attribution: { shiftedNodes: ['#ad'] },
+    });
+    vitals.fire('INP', {
+      name: 'INP',
+      value: 150,
+      rating: 'good',
+      attribution: { interactionTarget: 'button#buy' },
+    });
+    vitals.fire('FCP', { name: 'FCP', value: 900, rating: 'good' });
+    vitals.fire('TTFB', { name: 'TTFB', value: 300, rating: 'good' });
+
+    expect(harness.vitalsEmitted).toEqual([
+      { name: 'LCP', value: 1_200, rating: 'good' },
+      { name: 'CLS', value: 0.05, rating: 'good', shiftedNodes: ['#ad'] },
+      { name: 'INP', value: 150, rating: 'good', interactionTarget: 'button#buy' },
+      { name: 'FCP', value: 900, rating: 'good' },
+      { name: 'TTFB', value: 300, rating: 'good' },
+    ]);
+    harness.collector.dispose();
+  });
+
   it('skips vitals entirely when the client is absent', () => {
     const harness = setup(undefined);
     harness.collector.start();
