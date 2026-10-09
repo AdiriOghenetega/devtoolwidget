@@ -1,5 +1,8 @@
 # devtoolwidget
 
+[![CI](https://github.com/AdiriOghenetega/devtoolwidget/actions/workflows/ci.yml/badge.svg)](https://github.com/AdiriOghenetega/devtoolwidget/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 > Diagnose and act, in one click.
 
 devtoolwidget is an open-source browser extension that gives developers one

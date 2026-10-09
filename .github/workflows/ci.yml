@@ -5,15 +5,19 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   verify:
+    name: Lint, test, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 12.10.1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -27,9 +31,16 @@ jobs:
         run: pnpm deps:check
       - name: Tests with coverage
         run: pnpm test:coverage
-      - name: Build (Chrome)
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+      - name: Build (Chromium)
         run: pnpm build
       - name: Build (Firefox)
         run: pnpm build:firefox
-      - name: Size budgets
+      - name: Size check
         run: pnpm size
