@@ -28,7 +28,7 @@ Non-goals
 Engineering (must hit)
 • TypeScript strict mode with zero any and zero type errors.
 • Line coverage of at least 90% in src/core, at least 80% overall.
-• Injected agent under 15 KB gzipped; lazy-loaded UI under 120 KB gzipped.
+• Split injected budgets (ADR 0019): critical document_start agent ≤ 15 KB gzipped (console/network patch, bridge, batching); deferred performance script ≤ 25 KB gzipped, injected at document_idle (web-vitals, long tasks, observers, `buffered: true`); content bootstrap at document_start ≤ 10 KB gzipped (bridge, handshake, routing, tiny vanilla launcher); lazy UI chunks ≤ 120 KB gzipped in total, imported on first interaction.
 • Added main-thread cost during page load under 50 ms on a mid-range laptop (measured by the benchmark in Prompt 8.2).
 • Zero critical or serious axe violations in the UI.
 Adoption (aspirational, do not let them drive scope)
