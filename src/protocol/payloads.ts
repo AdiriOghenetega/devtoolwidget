@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 import { MAX_BATCH_EVENTS, toBytes, toMillis, toTabId, type SerializedValue } from '../core';
 
 /**
@@ -79,7 +79,7 @@ export const consoleEntrySchema = z.object({
   kind: consoleKindSchema,
   level: consoleLevelSchema,
   timestamp: millisSchema,
-  args: z.array(serializedValueSchema),
+  args: z.array(serializedValueSchema).readonly(),
   stack: z.string().exactOptional(),
   count: z.number().int().nonnegative(),
 });
@@ -94,7 +94,7 @@ export const networkTimingSchema = z.object({
   total: millisSchema,
 });
 
-export const redactedHeaderValueSchema = z.union([z.string(), z.array(z.string())]);
+export const redactedHeaderValueSchema = z.union([z.string(), z.array(z.string()).readonly()]);
 export const redactedHeadersSchema = z.record(z.string(), redactedHeaderValueSchema);
 
 /** Wire schema for core `NetworkEntry`. */
@@ -127,7 +127,7 @@ export const vitalMetricSchema = z.discriminatedUnion('name', [
     name: z.literal('CLS'),
     value: z.number(),
     rating: vitalRatingSchema,
-    shiftedNodes: z.array(z.string()).exactOptional(),
+    shiftedNodes: z.array(z.string()).readonly().exactOptional(),
   }),
   z.object({
     name: z.literal('INP'),
@@ -164,7 +164,7 @@ export const storageAreaUsageSchema = z.object({
 
 /** Wire schema for core `StorageSummary`. */
 export const storageSummarySchema = z.object({
-  areas: z.array(storageAreaUsageSchema),
+  areas: z.array(storageAreaUsageSchema).readonly(),
 });
 
 /**
@@ -179,8 +179,8 @@ export const captureEventSchema = z.discriminatedUnion('channel', [
   z.object({
     at: millisSchema,
     channel: z.literal('performance'),
-    vitals: z.array(vitalMetricSchema),
-    longTasks: z.array(longTaskSchema),
+    vitals: z.array(vitalMetricSchema).readonly(),
+    longTasks: z.array(longTaskSchema).readonly(),
   }),
   z.object({ at: millisSchema, channel: z.literal('storage'), summary: storageSummarySchema }),
 ]);
@@ -193,7 +193,7 @@ export const captureEventSchema = z.discriminatedUnion('channel', [
 export const captureBatchSchema = z.object({
   sequence: z.number().int().nonnegative(),
   dropped: z.number().int().nonnegative(),
-  events: z.array(captureEventSchema).max(MAX_BATCH_EVENTS),
+  events: z.array(captureEventSchema).max(MAX_BATCH_EVENTS).readonly(),
 });
 
 /** Wire schema for core `PageSnapshot`. */
@@ -201,10 +201,10 @@ export const pageSnapshotSchema = z.object({
   tabId: tabIdSchema,
   url: z.string(),
   capturedAt: millisSchema,
-  console: z.array(consoleEntrySchema),
-  network: z.array(networkEntrySchema),
-  vitals: z.array(vitalMetricSchema),
-  longTasks: z.array(longTaskSchema),
+  console: z.array(consoleEntrySchema).readonly(),
+  network: z.array(networkEntrySchema).readonly(),
+  vitals: z.array(vitalMetricSchema).readonly(),
+  longTasks: z.array(longTaskSchema).readonly(),
   storage: storageSummarySchema,
 });
 

@@ -4,7 +4,8 @@ import { connectAgentBridge, type ContentWindow } from '../../src/capture/bridge
 import { createCommit, createHandshake } from '../../src/capture/bridge/handshake';
 import { createCommandRouter } from '../../src/capture/session/command-router';
 import { TabSessionRegistry } from '../../src/capture/session/session-registry';
-import { createIdFactory, toTabId } from '../../src/core';
+import { TabNetworkController } from '../../src/capture/network/tab-network-controller';
+import { aSnapshot, createIdFactory, toTabId } from '../../src/core';
 import { createFakePorts } from '../../src/platform/fakes';
 import { PROTOCOL_VERSION } from '../../src/protocol';
 
@@ -109,7 +110,17 @@ describe('agent bridge handshake and ping', () => {
     // Service-worker hop: the router handles ping and records the session.
     const ports = createFakePorts();
     const registry = new TabSessionRegistry(ports.storage, () => 1_000);
-    const router = createCommandRouter({ registry });
+    const network = new TabNetworkController({ tabs: ports.tabs, rules: ports.networkRules });
+    const router = createCommandRouter({
+      registry,
+      network,
+      snapshot: () => Promise.resolve(aSnapshot().build()),
+      clear: () =>
+        Promise.resolve({ ok: true, bytesFreed: 0, results: [], failures: [], warnings: [] }),
+      exportReport: () => Promise.resolve({ filename: 'report.md', content: '' }),
+      resolveThrottle: (profile) => network.setThrottle(profile),
+      tabUrl: () => Promise.resolve(undefined),
+    });
     const routed = await router.handle(
       { type: 'command.ping', version: PROTOCOL_VERSION, correlationId: 'c1', payload: {} },
       { tabId: toTabId(7) },

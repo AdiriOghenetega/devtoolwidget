@@ -83,7 +83,7 @@ const CASES: readonly { readonly input: CommandInput; readonly result: ResultMes
       type: 'result.exportReport',
       version: PROTOCOL_VERSION,
       correlationId: 'c1',
-      payload: { format: 'json', filename: 'report.json' },
+      payload: { format: 'json', filename: 'report.json', content: '{}' },
     },
   },
 ];
