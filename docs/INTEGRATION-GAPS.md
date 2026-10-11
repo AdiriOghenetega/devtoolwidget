@@ -11,16 +11,18 @@ Everything below is a wiring task; no new domain logic is implied.
 
 ## Status
 
-| Gap | Area                         | Status                                                                                                   |
-| --- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| G1  | Capture wiring               | **Resolved** (Slice A, ADR 0013)                                                                         |
-| G2  | Widget shell not mounted     | **Resolved** (Slice B)                                                                                   |
-| G3  | Screens/stores not connected | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C) |
-| G4  | Router handles `ping` only   | Open (Slice C)                                                                                           |
-| G5  | Clear/snapshot/export        | Open (Slice C)                                                                                           |
-| G6  | Site-access registration     | Open (Slice D)                                                                                           |
-| G7  | Bridge ack never received    | **Resolved** (Slice A, ADR 0013)                                                                         |
-| G8  | Command reply envelope       | **Resolved** (Slice A, ADR 0013)                                                                         |
+| Gap | Area                         | Status                                                                                                                                             |
+| --- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | Capture wiring               | **Resolved** (Slice A, ADR 0013)                                                                                                                   |
+| G2  | Widget shell not mounted     | **Resolved** (Slice B)                                                                                                                             |
+| G3  | Screens/stores not connected | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C)                                           |
+| G4  | Router handles `ping` only   | **Resolved** (Slice C) for hardReload/setThrottle/toggleDisableCache/getSnapshot/clearStorage/exportReport; setThrottle application deferred (G10) |
+| G5  | Clear/snapshot/export        | **Resolved** (Slice C)                                                                                                                             |
+| G6  | Site-access registration     | Open (Slice D)                                                                                                                                     |
+| G7  | Bridge ack never received    | **Resolved** (Slice A, ADR 0013)                                                                                                                   |
+| G8  | Command reply envelope       | **Resolved** (Slice A, ADR 0013)                                                                                                                   |
+| G9  | Disable-cache DNR rule shape | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                             |
+| G10 | setThrottle application      | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                           |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -202,3 +204,21 @@ Evidence:
 
 Blocks: the `pong` assertion in the smoke test; FR-1 and every FR that reads a
 command reply.
+
+## G9 — The disable-cache rule cannot be expressed (OPEN)
+
+Slice C wired `toggleDisableCache` to `TabNetworkController.setDisableCache`, which
+plans a session rule via `planDisableCache`. That rule is a bare
+`{ action: { type: 'modifyHeaders' }, condition: { tabIds } }` with **no header
+modification**, and Chrome rejects a `modifyHeaders` rule that sets no headers, so
+`updateSessionRules` fails and no rule is installed (its E2E is `test.fixme`). The
+port's `NetworkRuleAction` has no header fields, so the fix is to extend it
+(request/response header operations) and have `planDisableCache` emit e.g.
+`Cache-Control: no-store` on the request. Blocks FR-7.
+
+## G10 — setThrottle resolves but does not apply (OPEN)
+
+Slice C wired `setThrottle` to resolve the profile and echo it, but nothing is
+applied: the soft path needs the agent's `NetworkCollector` to take an
+`artificialDelayMs`, and reaching it means relaying the command SW→content→agent
+over the bridge — the remaining action hop. Blocks FR-7 and FR-12.
