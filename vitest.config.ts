@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [WxtVitest()],
   test: {
     environment: 'happy-dom',
+    setupFiles: ['./src/ui/design-system/testing/setup.ts'],
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tests/**/*.test.ts'],
     exclude: [...configDefaults.exclude, 'tests/architecture/fixtures/**'],
     coverage: {
