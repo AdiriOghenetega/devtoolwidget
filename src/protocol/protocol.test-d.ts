@@ -2,6 +2,8 @@ import { describe, expectTypeOf, it } from 'vitest';
 import type { z } from 'zod';
 import type {
   Bytes,
+  CaptureBatch,
+  CaptureEvent,
   ConsoleEntry,
   LongTask,
   Millis,
@@ -13,6 +15,8 @@ import type {
 } from '../core';
 import type {
   bytesSchema,
+  captureBatchSchema,
+  captureEventSchema,
   consoleEntrySchema,
   longTaskSchema,
   millisSchema,
@@ -71,5 +75,10 @@ describe('payload schemas stay aligned with the core domain', () => {
     expectTypeOf<z.infer<typeof pageSnapshotSchema>['tabId']>().toEqualTypeOf<TabId>();
     expectTypeOf<z.infer<typeof pageSnapshotSchema>['capturedAt']>().toEqualTypeOf<Millis>();
     expectTypeOf<z.infer<typeof pageSnapshotSchema>['storage']>().toExtend<StorageSummary>();
+  });
+
+  it('mirrors the core capture union and batch exactly (no duplicate shapes)', () => {
+    expectTypeOf<z.infer<typeof captureEventSchema>>().toExtend<CaptureEvent>();
+    expectTypeOf<z.infer<typeof captureBatchSchema>>().toExtend<CaptureBatch>();
   });
 });

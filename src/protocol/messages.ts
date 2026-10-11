@@ -1,15 +1,11 @@
 import { z } from 'zod';
 import { protocolErrorSchema } from './errors';
 import {
+  captureBatchSchema,
   clearStoragePresetSchema,
-  consoleEntrySchema,
   exportFormatSchema,
-  longTaskSchema,
-  networkEntrySchema,
   pageSnapshotSchema,
-  storageSummarySchema,
   throttleProfileSchema,
-  vitalMetricSchema,
 } from './payloads';
 
 /** Builds a message envelope around a payload schema. */
@@ -27,26 +23,10 @@ function envelope<TType extends string, TPayload extends z.ZodType>(
 
 // --- Events -----------------------------------------------------------------
 
-const consoleEventSchema = envelope('event.console', consoleEntrySchema);
-const networkEventSchema = envelope('event.network', networkEntrySchema);
-const performanceEventSchema = envelope(
-  'event.performance',
-  z.object({
-    vitals: z.array(vitalMetricSchema),
-    longTasks: z.array(longTaskSchema),
-  }),
-);
-const storageEventSchema = envelope('event.storage', storageSummarySchema);
+const eventBatchMessageSchema = envelope('event.batch', captureBatchSchema);
 
-const eventMessageSchemas = [
-  consoleEventSchema,
-  networkEventSchema,
-  performanceEventSchema,
-  storageEventSchema,
-] as const;
-
-/** Every event message (PRD 8.2). */
-export const eventMessageSchema = z.discriminatedUnion('type', eventMessageSchemas);
+/** The capture event message: one typed batch of capture events (PRD 8.2, 8.4). */
+export const eventMessageSchema = eventBatchMessageSchema;
 
 // --- Commands ---------------------------------------------------------------
 
@@ -123,6 +103,19 @@ export const resultMessageSchema = z.discriminatedUnion('type', resultMessageSch
 /** The single error message shape. */
 export const errorMessageSchema = envelope('error', protocolErrorSchema);
 
+// --- Command responses ------------------------------------------------------
+
+/**
+ * The reply to a command: a typed result, or the `error` message when the
+ * command failed. The service worker and the content script share this single
+ * envelope so a reply can never be written in one shape and read in another
+ * (integration gap G8).
+ */
+export const commandResponseSchema = z.union([resultMessageSchema, errorMessageSchema]);
+
+/** A command reply: a result on success, an error on failure. */
+export type CommandResponse = z.infer<typeof commandResponseSchema>;
+
 // --- Combined ---------------------------------------------------------------
 
 /** Any protocol message. */
@@ -139,12 +132,7 @@ export type CommandMessage = z.infer<typeof commandMessageSchema>;
 export type ResultMessage = z.infer<typeof resultMessageSchema>;
 export type ErrorMessage = z.infer<typeof errorMessageSchema>;
 
-const EVENT_TYPES = [
-  'event.console',
-  'event.network',
-  'event.performance',
-  'event.storage',
-] as const;
+const EVENT_TYPES = ['event.batch'] as const;
 const COMMAND_TYPES = [
   'command.clearStorage',
   'command.hardReload',
@@ -167,6 +155,10 @@ const RESULT_TYPES = [
 export const EVENT_MESSAGE_TYPES: ReadonlySet<string> = new Set(EVENT_TYPES);
 export const COMMAND_MESSAGE_TYPES: ReadonlySet<string> = new Set(COMMAND_TYPES);
 export const RESULT_MESSAGE_TYPES: ReadonlySet<string> = new Set(RESULT_TYPES);
+export const COMMAND_RESPONSE_MESSAGE_TYPES: ReadonlySet<string> = new Set([
+  ...RESULT_TYPES,
+  'error',
+]);
 export const ALL_MESSAGE_TYPES: ReadonlySet<string> = new Set([
   ...EVENT_TYPES,
   ...COMMAND_TYPES,

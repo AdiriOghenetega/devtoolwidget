@@ -123,3 +123,39 @@ self.addEventListener('fetch', function (event) {
   event.respondWith(fetch(event.request));
 });
 `;
+
+/**
+ * A page whose own script (registered after the main-world agent, with a
+ * capturing listener to be maximally adversarial) tries to observe the bridge
+ * handshake and any transferred ports. The agent must hide both.
+ */
+export const SPY_HTML = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>devToolWidget hostile page</title>
+  </head>
+  <body>
+    <h1>Hostile page</h1>
+    <script>
+      window.__dtwSpy = { bridgeMessages: 0, transferredPorts: 0, capturedEvents: 0 };
+      window.addEventListener(
+        'message',
+        function (event) {
+          var data = event.data;
+          if (data && typeof data === 'object' && data.channel === 'devtoolwidget:bridge') {
+            window.__dtwSpy.bridgeMessages += 1;
+          }
+          if (event.ports && event.ports.length > 0) {
+            window.__dtwSpy.transferredPorts += event.ports.length;
+          }
+          if (data && typeof data === 'object' && data.type === 'event.batch') {
+            window.__dtwSpy.capturedEvents += 1;
+          }
+        },
+        true,
+      );
+    </script>
+  </body>
+</html>
+`;

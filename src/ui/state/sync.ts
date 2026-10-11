@@ -1,4 +1,4 @@
-import { err, ok, type PageSnapshot, type Result } from '../../core';
+import { err, ok, type Result } from '../../core';
 import type { ProtocolError, TypedChannel } from '../../protocol';
 import type { OverviewStore } from './stores';
 
@@ -6,13 +6,18 @@ import type { OverviewStore } from './stores';
 export type SyncError = ProtocolError | { readonly code: 'transport'; readonly message: string };
 
 /**
- * Subscribes to delta events from the channel. Returns an unsubscribe function.
- * Events are applied to the store, which de-duplicates by id, so re-delivery
- * after a reconnect is harmless.
+ * Subscribes to capture deltas from the channel. Each `event.batch` is fanned
+ * out to the store, which de-duplicates by id / timestamp, so re-delivery after
+ * a reconnect is harmless. Returns an unsubscribe function.
  */
 export function attachDeltas(store: OverviewStore, channel: TypedChannel): () => void {
   return channel.on((message) => {
-    store.applyEvent(message);
+    if (message.type !== 'event.batch') {
+      return;
+    }
+    for (const event of message.payload.events) {
+      store.applyEvent(event);
+    }
   });
 }
 
@@ -37,7 +42,7 @@ export async function synchronize(
     store.setConnection('error');
     return err({ code: 'unsupported', message: 'Expected a snapshot result' });
   }
-  store.applySnapshot(response.value.payload as unknown as PageSnapshot);
+  store.applySnapshot(response.value.payload);
   store.setConnection('connected');
   return ok('connected');
 }

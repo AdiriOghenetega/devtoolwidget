@@ -5,12 +5,13 @@ import {
   parseMessage,
   type CommandInput,
   type ErrorMessage,
+  type EventMessage,
   type ProtocolError,
   type ProtocolMessage,
   type ResultMessage,
 } from '../../protocol';
 import type { AgentPort } from './agent-bridge';
-import { createHandshake, createNonce, parseAck } from './handshake';
+import { createCommit, createHandshake, createNonce, parseAck } from './handshake';
 
 /** An error from the agent (protocol) or the transport (platform). */
 export type BridgeError = ProtocolError | PlatformError;
@@ -41,6 +42,8 @@ export interface ConnectOptions {
 export interface AgentConnection {
   readonly nonce: string;
   request(command: CommandInput): Promise<Result<ResultMessage, BridgeError>>;
+  /** Subscribes to capture events the agent pushes (e.g. `event.batch`). */
+  onEvent(handler: (message: EventMessage) => void): () => void;
   dispose(): void;
 }
 
@@ -74,6 +77,10 @@ function isResultMessage(message: ProtocolMessage): message is ResultMessage {
   return message.type.startsWith('result.');
 }
 
+function isEventMessage(message: ProtocolMessage): message is EventMessage {
+  return message.type.startsWith('event.');
+}
+
 function createConnection(
   port: AgentPort,
   nonce: string,
@@ -81,12 +88,19 @@ function createConnection(
   timeoutMs: number,
 ): AgentConnection {
   const pending = new Map<string, Pending>();
+  const eventHandlers = new Set<(message: EventMessage) => void>();
   port.onmessage = (event: MessageEvent) => {
     const parsed = parseMessage(event.data);
     if (!parsed.ok) {
       return;
     }
     const message = parsed.value;
+    if (isEventMessage(message)) {
+      for (const handler of [...eventHandlers]) {
+        handler(message);
+      }
+      return;
+    }
     const entry = pending.get(message.correlationId);
     if (entry === undefined) {
       return;
@@ -115,8 +129,15 @@ function createConnection(
         port.postMessage({ ...command, version: PROTOCOL_VERSION, correlationId });
       });
     },
+    onEvent(handler) {
+      eventHandlers.add(handler);
+      return () => {
+        eventHandlers.delete(handler);
+      };
+    },
     dispose() {
       port.onmessage = null;
+      eventHandlers.clear();
     },
   };
 }
@@ -124,6 +145,7 @@ function createConnection(
 function platformErrorResult(message: string): Result<ResultMessage, PlatformError> {
   return err(platformError('timeout', message));
 }
+
 export async function connectAgentBridge(
   options: ConnectOptions,
 ): Promise<Result<AgentConnection, PlatformError>> {
@@ -137,6 +159,8 @@ export async function connectAgentBridge(
     const acked = waitForAck(channel.port1, nonce, retryMs);
     options.target.postMessage(createHandshake(nonce), '*', [channel.port2 as Transferable]);
     if (await acked) {
+      // Commit the agent to this port so the one it adopts is the one we hold.
+      channel.port1.postMessage(createCommit(nonce));
       return ok(createConnection(channel.port1, nonce, options.createId, timeoutMs));
     }
   }

@@ -38,12 +38,15 @@ Matches PRD 8.3: `src/core/{domain,settings,clear,network,performance,buffers,re
 ## 8.4 Data flow
 
 Implemented as specified: page events → main-world agent (console/network/performance
-collectors) → batched over the secure `MessageChannel` port (`EventPipeline`, 100 ms)
-→ content script → service worker per-tab store (`TabSessionStore` in `storage.session`,
-ADR 0012) → panel via snapshot-then-deltas (`PanelBroadcaster`). Actions flow in
-reverse through typed protocol commands. **Gap:** the UI→SW→content→agent relay hop
-for actions is wired for `ping` only; the remaining action commands need the router
-handlers and the tab-port forwarding.
+collectors, wired by `capture/agent`) → batched over the secure `MessageChannel` port as
+one typed `event.batch` message (`EventPipeline`, 100 ms; sequence + cumulative dropped +
+typed entries) → content script forwards it → service worker stamps the tab id and stores
+the typed entries (`TabSessionStore` in `storage.session`, ADR 0012) → panel via
+snapshot-then-deltas (`PanelBroadcaster`). The wire shape and the bridge/response fixes
+are recorded in ADR 0013. Actions flow in reverse through typed protocol commands and a
+single result-or-error response envelope. **Gap:** the UI→SW→content→agent relay hop for
+actions is wired for `ping` only; the remaining action commands need the router handlers
+and the tab-port forwarding.
 
 ## 8.5 Messaging and state
 
@@ -69,8 +72,9 @@ handlers and the tab-port forwarding.
 2. Concrete page/background `StepExecutor`s for `ClearOrchestrator` (scripting +
    browsingData ports) and a `StorageSummary` command handler.
 3. Wire `TabNetworkController.cleanup`/`sync` to `tabs.onRemoved`/`onStartup`.
-4. Agent-side capture wiring (console/network/performance collectors emit over the
-   bridge) and the remaining action relay.
+4. ~~Agent-side capture wiring (console/network/performance collectors emit over the
+   bridge)~~ Done in Slice A (`capture/agent`, ADR 0013). The remaining action relay
+   (UI→SW→content→agent) is still open (Slice C).
 5. UI package (Preact stores/screens), options and side-panel screens.
 
 ## Verdict
