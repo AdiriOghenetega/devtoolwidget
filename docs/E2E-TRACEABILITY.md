@@ -52,28 +52,28 @@ Its routing is pure and unit-tested in `server.test.ts` (runs under `pnpm test`)
 | —     | Harness / extension loads | `specs/smoke.spec.ts`           | `/ok`, `/`                                       | passing | —                                                                                   |
 | —     | Capture wiring (G1)       | `specs/capture.spec.ts`         | `/ok`                                            | passing | —                                                                                   |
 | —     | Bridge hardening (G7)     | `specs/bridge-security.spec.ts` | `/spy`                                           | passing | —                                                                                   |
-| FR-1  | Widget shell              | `specs/fr-01.spec.ts`           | `/`                                              | fixme   | G2, G6                                                                              |
-| FR-2  | Overview screen           | `specs/fr-02.spec.ts`           | `/`, `/slow`, `/status/500`                      | fixme   | G2, G3                                                                              |
-| FR-3  | Console capture           | `specs/fr-03.spec.ts`           | `/` (Trigger error), `/app.js`                   | fixme   | G2 (capture done in Slice A)                                                        |
-| FR-4  | Network capture           | `specs/fr-04.spec.ts`           | `/slow`, `/status/404`, `/status/500`, `/big`    | fixme   | G2 (capture done in Slice A)                                                        |
-| FR-5  | Performance capture       | `specs/fr-05.spec.ts`           | `/huge.png`, `/blocking.js`                      | fixme   | G2, vitals client                                                                   |
+| FR-1  | Widget shell              | `specs/fr-01.spec.ts`           | `/`                                              | passing | —                                                                                   |
+| FR-2  | Overview screen           | `specs/fr-02.spec.ts`           | `/`, `/slow`, `/status/500`                      | passing | —                                                                                   |
+| FR-3  | Console capture           | `specs/fr-03.spec.ts`           | `/` (Trigger error), `/app.js`                   | fixme   | storage/snapshots tabs (Slice C); capture done (Slice A)                            |
+| FR-4  | Network capture           | `specs/fr-04.spec.ts`           | `/slow`, `/status/404`, `/status/500`, `/big`    | fixme   | capture done (Slice A); richer detail (Slice C)                                     |
+| FR-5  | Performance capture       | `specs/fr-05.spec.ts`           | `/huge.png`, `/blocking.js`                      | fixme   | vitals client                                                                       |
 | FR-6  | Storage and cache         | `specs/fr-06.spec.ts`           | `/app.js`, `/sw.js`                              | fixme   | G4, G5                                                                              |
 | FR-7  | Network conditions        | `specs/fr-07.spec.ts`           | `/app.js`, `/nocache.js`                         | fixme   | G4                                                                                  |
-| FR-8  | Insights engine           | `specs/fr-08.spec.ts`           | `/duplicate`, `/nocache.js`, `/big`, `/huge.png` | fixme   | G2, G3                                                                              |
+| FR-8  | Insights engine           | `specs/fr-08.spec.ts`           | `/duplicate`, `/nocache.js`, `/big`, `/huge.png` | fixme   | G3 (rules run; panel surfacing partial)                                             |
 | FR-9  | Snapshots and comparison  | `specs/fr-09.spec.ts`           | `/`, `/slow`                                     | fixme   | G5                                                                                  |
 | FR-10 | Export and share          | `specs/fr-10.spec.ts`           | `/`                                              | fixme   | G5                                                                                  |
 | FR-11 | Settings and profiles     | `specs/fr-11.spec.ts`           | `/`                                              | fixme   | G3                                                                                  |
 | FR-12 | Deep mode                 | `specs/fr-12.spec.ts`           | `/`                                              | fixme   | G4                                                                                  |
-| FR-13 | Keyboard/accessibility    | `specs/fr-13.spec.ts`           | `/`                                              | fixme   | G2, G6                                                                              |
+| FR-13 | Keyboard/accessibility    | `specs/fr-13.spec.ts`           | `/`                                              | fixme   | G6, shortcut binding                                                                |
 | FR-14 | Onboarding                | `specs/fr-14.spec.ts`           | `/`                                              | fixme   | G3, G6                                                                              |
 | FR-15 | Browser support           | —                               | —                                                | n/a     | Out of scope: the suite is Chromium-only; Firefox coverage needs a separate runner. |
 
-> Slice A closed **G1**, **G7** and **G8**; the three `passing` rows above are the
-> specs it unblocked. Every remaining in-page FR is additionally blocked by **G6**
-> (the runtime scripts are not registered, so the harness must do it until Slice D)
-> and, where it renders the panel, by **G2/G3** (the shell and screens are not
-> mounted until Slice B). The per-FR blockers above name the _specific_ missing
-> wiring that each spec will assert once that FR is implemented.
+> Slice A closed **G1**, **G7** and **G8**; Slice B closed **G2** and wired the
+> Overview + console/network/performance screens (G3), so `fr-01` and `fr-02` now
+> pass. The remaining in-page FRs are additionally blocked by **G6** (the runtime
+> scripts are not registered, so the harness does it until Slice D) and by the
+> Slice C command handlers where they need actions. The per-FR blockers above name
+> the _specific_ missing wiring each spec will assert once that FR is implemented.
 
 ## The passing specs
 

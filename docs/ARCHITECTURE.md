@@ -75,7 +75,10 @@ and the tab-port forwarding.
 4. ~~Agent-side capture wiring (console/network/performance collectors emit over the
    bridge)~~ Done in Slice A (`capture/agent`, ADR 0013). The remaining action relay
    (UI→SW→content→agent) is still open (Slice C).
-5. UI package (Preact stores/screens), options and side-panel screens.
+5. UI package (Preact stores/screens), options and side-panel screens. Slice B
+   mounted the shell in the content script and wired the panel to the worker's
+   snapshot-then-deltas port (ADR 0014); the storage/snapshots tabs, options and
+   side-panel screens remain.
 
 ## Verdict
 
