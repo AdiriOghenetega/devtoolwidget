@@ -15,5 +15,6 @@ export * from './network';
 export * from './performance';
 export * from './redaction/redact';
 export * from './result';
+export * from './snapshots';
 export * from './serialization/serialize-value';
 export * from './settings';
