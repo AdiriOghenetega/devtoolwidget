@@ -1,20 +1,30 @@
 import { expect, registerExtensionScripts, test } from '../fixtures/extension';
 
-// FR-1 Widget shell (PRD section 6).
-// BLOCKED: G2 — the content script calls `hostWidgetRoot()` and sets a status
-// label only; the Shell (launcher, health badge, draggable panel) is never
-// mounted, and G6 — the runtime scripts are not registered by the extension.
-// See docs/INTEGRATION-GAPS.md#g2 and docs/E2E-TRACEABILITY.md.
-test.fixme('FR-1 shows a draggable, snapping launcher and opens a Shadow-DOM panel', async ({
-  context,
-  serviceWorker,
-}) => {
-  await registerExtensionScripts(serviceWorker);
-  const page = await context.newPage();
-  await page.goto('/');
+/**
+ * FR-1 Widget shell (PRD section 6). The content script mounts the shell in the
+ * shadow root: a draggable launcher and a health badge in the top frame, and the
+ * panel is lazy-loaded on first open. Unblocked by Slice B.
+ */
+test.describe('FR-1 widget shell', () => {
+  test('shows the launcher and health badge and opens the panel on click', async ({
+    context,
+    serviceWorker,
+  }) => {
+    await registerExtensionScripts(serviceWorker);
 
-  // Intended: the launcher is visible; dragging it snaps to an edge and the
-  // position survives a reload (per-site persistence); the panel is isolated in
-  // a shadow root and does not block page interaction outside its bounds.
-  await expect(page.locator('devtoolwidget-root')).toBeVisible();
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('devtoolwidget-root [data-devtoolwidget="status"]')).toHaveText(
+      'pong',
+    );
+
+    await expect(page.locator('.dwt-launcher')).toBeVisible();
+    await expect(page.locator('.dwt-health-badge')).toBeVisible();
+
+    await page.locator('.dwt-launcher').click();
+
+    // The panel module is lazy-loaded, then the dockable panel appears.
+    await expect(page.locator('.dwt-panel')).toBeVisible();
+    await expect(page.locator('.dwt-panel [role="tablist"]')).toBeVisible();
+  });
 });
