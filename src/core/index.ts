@@ -8,6 +8,7 @@
 export * from './buffers/ring-buffer';
 export * from './clear';
 export * from './domain';
+export * from './export';
 export * from './format/formatters';
 export * from './ids/id';
 export * from './insights';
@@ -15,5 +16,6 @@ export * from './network';
 export * from './performance';
 export * from './redaction/redact';
 export * from './result';
+export * from './snapshots';
 export * from './serialization/serialize-value';
 export * from './settings';
