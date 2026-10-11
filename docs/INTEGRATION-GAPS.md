@@ -11,16 +11,16 @@ Everything below is a wiring task; no new domain logic is implied.
 
 ## Status
 
-| Gap | Area                         | Status                           |
-| --- | ---------------------------- | -------------------------------- |
-| G1  | Capture wiring               | **Resolved** (Slice A, ADR 0013) |
-| G2  | Widget shell not mounted     | Open (Slice B)                   |
-| G3  | Screens/stores not connected | Open (Slice B)                   |
-| G4  | Router handles `ping` only   | Open (Slice C)                   |
-| G5  | Clear/snapshot/export        | Open (Slice C)                   |
-| G6  | Site-access registration     | Open (Slice D)                   |
-| G7  | Bridge ack never received    | **Resolved** (Slice A, ADR 0013) |
-| G8  | Command reply envelope       | **Resolved** (Slice A, ADR 0013) |
+| Gap | Area                         | Status                                                                                                   |
+| --- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| G1  | Capture wiring               | **Resolved** (Slice A, ADR 0013)                                                                         |
+| G2  | Widget shell not mounted     | **Resolved** (Slice B)                                                                                   |
+| G3  | Screens/stores not connected | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C) |
+| G4  | Router handles `ping` only   | Open (Slice C)                                                                                           |
+| G5  | Clear/snapshot/export        | Open (Slice C)                                                                                           |
+| G6  | Site-access registration     | Open (Slice D)                                                                                           |
+| G7  | Bridge ack never received    | **Resolved** (Slice A, ADR 0013)                                                                         |
+| G8  | Command reply envelope       | **Resolved** (Slice A, ADR 0013)                                                                         |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -47,7 +47,11 @@ Evidence:
 Blocks: FR-3, FR-4, FR-5, FR-8. (Capture now works; these FRs are blocked only by
 the panel mount — see G2/G3.)
 
-## G2 — The widget shell is not mounted in the content script
+## G2 — The widget shell is not mounted in the content script (RESOLVED, Slice B)
+
+> Resolved by Slice B: the content script renders `Widget` (the `Shell` with live
+> score/error-count) into the shadow root, and the panel is lazy-loaded on first
+> open. Covered by `tests/e2e/specs/fr-01.spec.ts`.
 
 `hostWidgetRoot()` mounts a shadow root containing a single status `<output>`.
 The real Shell (launcher, health badge, draggable panel) is implemented in
@@ -61,7 +65,13 @@ Evidence:
 
 Blocks: FR-1, FR-2 (visually).
 
-## G3 — Screens and state stores are not connected to the panel
+## G3 — Screens and state stores are not connected to the panel (RESOLVED for Slice B screens)
+
+> Resolved by Slice B: the panel connects to the worker over a long-lived port and
+> receives `panel.snapshot` then `panel.delta` (ADR 0014); `OverviewStore` fans
+> them into the Overview and the console/network/performance detail screens. The
+> storage and snapshots tabs arrive with their command handlers (Slice C). Covered
+> by `src/ui/shell/PanelContent.test.tsx` and `tests/e2e/specs/fr-02.spec.ts`.
 
 The Overview/Console/Network/Performance/Storage/Snapshots screens and the
 signal-based stores in `src/ui/state/**` are implemented and tested, but nothing

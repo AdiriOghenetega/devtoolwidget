@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { protocolErrorSchema } from './errors';
 import {
   captureBatchSchema,
+  captureEventSchema,
   clearStoragePresetSchema,
   exportFormatSchema,
   pageSnapshotSchema,
@@ -103,6 +104,22 @@ export const resultMessageSchema = z.discriminatedUnion('type', resultMessageSch
 /** The single error message shape. */
 export const errorMessageSchema = envelope('error', protocolErrorSchema);
 
+// --- Panel push -------------------------------------------------------------
+
+/**
+ * Messages the service worker pushes to an open panel over its long-lived port:
+ * one full snapshot when the panel opens, then one delta per capture event
+ * (PRD 8.4, snapshot then deltas). Validated on receipt like every other
+ * cross-context message.
+ */
+export const panelMessageSchema = z.discriminatedUnion('type', [
+  envelope('panel.snapshot', pageSnapshotSchema),
+  envelope('panel.delta', captureEventSchema),
+]);
+
+/** A panel push message. */
+export type PanelMessage = z.infer<typeof panelMessageSchema>;
+
 // --- Command responses ------------------------------------------------------
 
 /**
@@ -124,6 +141,7 @@ export const protocolMessageSchema = z.union([
   commandMessageSchema,
   resultMessageSchema,
   errorMessageSchema,
+  panelMessageSchema,
 ]);
 
 export type ProtocolMessage = z.infer<typeof protocolMessageSchema>;
@@ -159,10 +177,13 @@ export const COMMAND_RESPONSE_MESSAGE_TYPES: ReadonlySet<string> = new Set([
   ...RESULT_TYPES,
   'error',
 ]);
+const PANEL_TYPES = ['panel.snapshot', 'panel.delta'] as const;
+export const PANEL_MESSAGE_TYPES: ReadonlySet<string> = new Set(PANEL_TYPES);
 export const ALL_MESSAGE_TYPES: ReadonlySet<string> = new Set([
   ...EVENT_TYPES,
   ...COMMAND_TYPES,
   ...RESULT_TYPES,
+  ...PANEL_TYPES,
   'error',
 ]);
 

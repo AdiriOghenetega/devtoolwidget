@@ -104,4 +104,28 @@ export async function registerExtensionScripts(serviceWorker: Worker): Promise<v
   }, CONTENT_SCRIPTS);
 }
 
+/** Reads the `channel` of every capture event persisted in `storage.session`. */
+export function storedChannelNames(serviceWorker: Worker): Promise<string[]> {
+  return serviceWorker.evaluate(async () => {
+    const api = (
+      globalThis as unknown as {
+        chrome: {
+          storage: { session: { get(keys: null): Promise<Record<string, unknown>> } };
+        };
+      }
+    ).chrome;
+    const stored = await api.storage.session.get(null);
+    const channels: string[] = [];
+    for (const entry of Object.values(stored)) {
+      const session = (entry as { value?: { events?: readonly { channel?: unknown }[] } }).value;
+      for (const event of session?.events ?? []) {
+        if (typeof event.channel === 'string') {
+          channels.push(event.channel);
+        }
+      }
+    }
+    return channels;
+  });
+}
+
 export { expect };

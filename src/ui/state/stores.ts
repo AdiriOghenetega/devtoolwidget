@@ -15,6 +15,7 @@ import {
   type StorageSummary,
   type VitalMetric,
 } from '../../core';
+import type { PanelMessage } from '../../protocol';
 
 /** The widget's connection to the page/capture backend. */
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -33,8 +34,14 @@ export interface OverviewStore {
   readonly consoleErrors: Signal<number>;
   readonly networkCount: Signal<number>;
   readonly isEmpty: Signal<boolean>;
+  readonly console: Signal<readonly ConsoleEntry[]>;
+  readonly network: Signal<readonly NetworkEntry[]>;
+  readonly vitals: Signal<readonly VitalMetric[]>;
+  readonly longTasks: Signal<readonly LongTask[]>;
+  readonly storage: Signal<StorageSummary>;
   applySnapshot(snapshot: PageSnapshot): void;
   applyEvent(event: CaptureEvent): void;
+  applyPanelMessage(message: PanelMessage): void;
   setConnection(status: ConnectionStatus): void;
 }
 
@@ -97,6 +104,8 @@ export function createOverviewStore(): OverviewStore {
   const isEmpty = computed(
     () => consoleMap.value.size === 0 && networkMap.value.size === 0 && vitals.value.length === 0,
   );
+  const consoleEntries = computed<readonly ConsoleEntry[]>(() => [...consoleMap.value.values()]);
+  const networkEntries = computed<readonly NetworkEntry[]>(() => [...networkMap.value.values()]);
 
   const applySnapshot = (incoming: PageSnapshot): void => {
     snapshotAt.value = Number(incoming.capturedAt);
@@ -142,8 +151,20 @@ export function createOverviewStore(): OverviewStore {
     consoleErrors,
     networkCount,
     isEmpty,
+    console: consoleEntries,
+    network: networkEntries,
+    vitals,
+    longTasks,
+    storage,
     applySnapshot,
     applyEvent,
+    applyPanelMessage(message: PanelMessage) {
+      if (message.type === 'panel.snapshot') {
+        applySnapshot(message.payload);
+        return;
+      }
+      applyEvent(message.payload);
+    },
     setConnection(status) {
       connection.value = status;
     },

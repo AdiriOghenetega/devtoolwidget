@@ -1,29 +1,4 @@
-import type { Worker } from '@playwright/test';
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
-
-/** Reads the `channel` of every capture event persisted in `storage.session`. */
-function storedChannels(serviceWorker: Worker): Promise<string[]> {
-  return serviceWorker.evaluate(async () => {
-    const api = (
-      globalThis as unknown as {
-        chrome: {
-          storage: { session: { get(keys: null): Promise<Record<string, unknown>> } };
-        };
-      }
-    ).chrome;
-    const stored = await api.storage.session.get(null);
-    const channels: string[] = [];
-    for (const entry of Object.values(stored)) {
-      const session = (entry as { value?: { events?: readonly { channel?: unknown }[] } }).value;
-      for (const event of session?.events ?? []) {
-        if (typeof event.channel === 'string') {
-          channels.push(event.channel);
-        }
-      }
-    }
-    return channels;
-  });
-}
+import { expect, registerExtensionScripts, storedChannelNames, test } from '../fixtures/extension';
 
 /**
  * Capture wiring end to end (FR-3, FR-4; integration gap G1). The main-world
@@ -48,7 +23,7 @@ test.describe('capture wiring', () => {
     await page.evaluate(() => fetch('/ok').then((response) => response.text()));
 
     await expect
-      .poll(async () => storedChannels(serviceWorker), { timeout: 15_000 })
+      .poll(async () => storedChannelNames(serviceWorker), { timeout: 15_000 })
       .toContain('network');
   });
 });

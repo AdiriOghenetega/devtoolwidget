@@ -319,32 +319,49 @@ describe('TabSessionStore across a service-worker restart', () => {
 });
 
 describe('PanelBroadcaster snapshot then deltas', () => {
-  it('sends a snapshot first, buffered deltas next, then live deltas', () => {
+  const snapshot = {
+    tabId: toTabId(1),
+    url: 'https://a.test/',
+    capturedAt: toMillis(1),
+    console: [],
+    network: [],
+    vitals: [],
+    longTasks: [],
+    storage: { areas: [] },
+  };
+
+  it('sends a snapshot first, buffered deltas next, then live deltas', async () => {
     const sent: { readonly type: string }[] = [];
     const broadcaster = new PanelBroadcaster({
-      getState: () => ({ tabId: 1, sequence: 0, events: [], dropped: 0 }),
+      getSnapshot: () => Promise.resolve(snapshot),
+      createId: () => 'c1',
       send: (message) => sent.push({ type: message.type }),
     });
 
     broadcaster.push(event('before', 1));
-    broadcaster.open();
+    await broadcaster.open();
     broadcaster.push(event('after', 2));
 
-    expect(sent.map((message) => message.type)).toEqual(['snapshot', 'delta', 'delta']);
+    expect(sent.map((message) => message.type)).toEqual([
+      'panel.snapshot',
+      'panel.delta',
+      'panel.delta',
+    ]);
   });
 
-  it('clears buffered deltas on close', () => {
+  it('clears buffered deltas on close', async () => {
     const sent: { readonly type: string }[] = [];
     const broadcaster = new PanelBroadcaster({
-      getState: () => ({ tabId: 1, sequence: 0, events: [], dropped: 0 }),
+      getSnapshot: () => Promise.resolve(snapshot),
+      createId: () => 'c1',
       send: (message) => sent.push({ type: message.type }),
     });
 
     broadcaster.push(event('dropped', 1));
     broadcaster.close();
-    broadcaster.open();
+    await broadcaster.open();
 
-    expect(sent.map((message) => message.type)).toEqual(['snapshot']);
+    expect(sent.map((message) => message.type)).toEqual(['panel.snapshot']);
   });
 });
 
