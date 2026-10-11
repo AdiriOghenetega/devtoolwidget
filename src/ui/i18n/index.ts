@@ -168,6 +168,20 @@ export const messages = {
   'overview.confirm.clear.title': 'Clear site data?',
   'overview.confirm.clear.body':
     'This removes cookies and storage for this origin and cannot be undone.',
+  'siteAccess.title': 'Site access',
+  'siteAccess.intro':
+    'devToolWidget runs only on sites you allow, and is off everywhere by default.',
+  'siteAccess.portNote':
+    'Allowing a site grants the whole site on every port — for example, all of localhost.',
+  'siteAccess.none': 'No sites allowed yet.',
+  'siteAccess.allow': 'Allow on {site}',
+  'siteAccess.revoke': 'Remove',
+  'siteAccess.openTab': 'Open a website tab to allow it here.',
+  'siteAccess.granted': 'Allowed on {site}.',
+  'siteAccess.already': 'Already allowed on {site}.',
+  'siteAccess.denied': 'Access was not granted.',
+  'siteAccess.revoked': 'Access removed for {site}.',
+  'siteAccess.off': 'Off',
 } as const;
 
 /** A compile-checked message key. */

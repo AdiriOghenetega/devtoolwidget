@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-9 Snapshots and comparison (PRD section 6).
 // BLOCKED: G5 — the snapshot store and the `getSnapshot` handler are not wired
@@ -8,7 +8,7 @@ test.fixme('FR-9 captures labelled snapshots and diffs two of them', async ({
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

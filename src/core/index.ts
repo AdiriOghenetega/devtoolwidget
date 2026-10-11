@@ -16,6 +16,7 @@ export * from './format/formatters';
 export * from './ids/id';
 export * from './insights';
 export * from './network';
+export * from './origin';
 export * from './performance';
 export * from './placement';
 export * from './redaction/redact';

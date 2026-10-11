@@ -1,9 +1,4 @@
-import {
-  expect,
-  registerExtensionScripts,
-  storedNetworkBodyPreviews,
-  test,
-} from '../fixtures/extension';
+import { expect, waitForSiteScripts, storedNetworkBodyPreviews, test } from '../fixtures/extension';
 
 const ORIGIN = 'http://127.0.0.1:4178';
 
@@ -18,7 +13,7 @@ test.describe('agent runtime configuration (G13)', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
 
     // Change the setting *before* the page loads, so the worker pushes it on the
     // panel-port connect and the content script forwards it to the agent.

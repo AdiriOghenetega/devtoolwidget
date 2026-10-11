@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, storedChannelNames, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, storedChannelNames, test } from '../fixtures/extension';
 
 /**
  * FR-2 Overview screen (PRD section 6). Once the panel opens, the store has been
@@ -11,7 +11,7 @@ test.describe('FR-2 overview screen', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
 
     const page = await context.newPage();
     await page.goto('/');

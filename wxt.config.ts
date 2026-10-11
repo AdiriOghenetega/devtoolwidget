@@ -56,5 +56,11 @@ export default defineConfig({
         description: 'Hard reload',
       },
     },
+    // G12 / PRD 7: no required host access. The content and agent scripts are
+    // registered per granted origin at runtime (SiteAccessService), so this is
+    // the only host-permission surface. `http://*/*` and `https://*/*` let the
+    // user grant any site discovered at runtime; match patterns ignore ports, so
+    // one grant covers the whole host on any port (e.g. `http://localhost/*`).
+    optional_host_permissions: ['http://*/*', 'https://*/*'],
   },
 });

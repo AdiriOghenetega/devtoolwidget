@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-11 Settings and profiles (PRD section 6).
 // BLOCKED: G3 — the settings service and options page exist, but per-origin
@@ -8,7 +8,7 @@ test.fixme('FR-11 applies per-origin profiles and imports/exports settings', asy
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

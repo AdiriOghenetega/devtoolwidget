@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-13 Keyboard and accessibility (PRD section 6).
 // BLOCKED: G6 — the commands are declared in the manifest and the
@@ -8,7 +8,7 @@ test.fixme('FR-13 toggles the panel by shortcut and is keyboard-navigable', asyn
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

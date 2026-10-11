@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 interface SpyCounters {
   readonly bridgeMessages: number;
@@ -19,7 +19,7 @@ test.describe('bridge security', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
 
     const page = await context.newPage();
     await page.goto('/spy');

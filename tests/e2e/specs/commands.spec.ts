@@ -1,5 +1,5 @@
-﻿import type { Page, Worker } from '@playwright/test';
-import { expect, registerExtensionScripts, storedChannelNames, test } from '../fixtures/extension';
+import type { Page, Worker } from '@playwright/test';
+import { expect, waitForSiteScripts, storedChannelNames, test } from '../fixtures/extension';
 
 /** Reads the number of session-scoped declarativeNetRequest rules in the worker. */
 function sessionRuleCount(serviceWorker: Worker): Promise<number> {
@@ -39,7 +39,7 @@ async function openPanel(page: Page, serviceWorker: Worker): Promise<void> {
  */
 test.describe('command router', () => {
   test('hard reload navigates the page', async ({ context, serviceWorker }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
     const page = await context.newPage();
     await page.goto('/');
     await openPanel(page, serviceWorker);
@@ -59,7 +59,7 @@ test.describe('command router', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
     const page = await context.newPage();
     await page.goto('/');
     await openPanel(page, serviceWorker);

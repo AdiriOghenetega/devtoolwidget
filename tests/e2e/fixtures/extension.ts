@@ -1,8 +1,8 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, expect, test as base, type BrowserContext, type Worker } from '@playwright/test';
-import { EXTENSION_PATH, isHeaded, NOOP_EXTENSION_PATH } from '../constants';
+import { EXTENSION_PATH, FIXTURE_HOST_PATTERN, isHeaded, NOOP_EXTENSION_PATH } from '../constants';
 
 /** The extra fixtures the extension harness exposes to specs. */
 export interface ExtensionFixtures {
@@ -27,14 +27,15 @@ export interface ContentScriptRegistration {
 
 /**
  * The extension's two runtime-registered bundles, as emitted by the WXT build.
- * They are registered from the worker in tests because WXT only adds
- * `registration: 'runtime'` scripts to the store, never to the static manifest.
+ * Only the benchmark uses these (to toggle the agent/content series); every other
+ * spec relies on the extension's own `SiteAccessService` registration, which the
+ * test-side manifest overlay below pre-grants.
  */
 export const CONTENT_SCRIPTS: readonly ContentScriptRegistration[] = [
   {
     id: 'devtoolwidget-agent',
     js: ['agent.js'],
-    matches: ['<all_urls>'],
+    matches: [FIXTURE_HOST_PATTERN],
     runAt: 'document_start',
     world: 'MAIN',
     persistAcrossSessions: false,
@@ -42,17 +43,19 @@ export const CONTENT_SCRIPTS: readonly ContentScriptRegistration[] = [
   {
     id: 'devtoolwidget-content',
     js: ['content-scripts/content.js'],
-    matches: ['<all_urls>'],
+    matches: [FIXTURE_HOST_PATTERN],
     runAt: 'document_start',
     persistAcrossSessions: false,
   },
 ];
 
-/** Minimal `chrome.scripting` surface the harness drives from the worker. */
-interface ScriptingGlobal {
+/**
+ * Minimal `chrome.scripting` surface the harness drives from the worker.
+ */
+interface ExtensionGlobal {
   readonly chrome: {
     scripting: {
-      registerContentScripts(scripts: readonly ContentScriptRegistration[]): Promise<void>;
+      getRegisteredContentScripts(): Promise<readonly { id: string }[]>;
     };
   };
 }
@@ -109,7 +112,8 @@ export const test = base.extend<ExtensionFixtures>({
   // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
     const userDataDir = mkdtempSync(join(tmpdir(), 'devtoolwidget-e2e-'));
-    const context = await launchPersistentExtension(userDataDir, EXTENSION_PATH);
+    const extensionPath = await prepareE2EExtension();
+    const context = await launchPersistentExtension(userDataDir, extensionPath);
     try {
       await use(context);
     } finally {
@@ -145,16 +149,55 @@ export const test = base.extend<ExtensionFixtures>({
   },
 });
 
+let overlayPromise: Promise<string> | undefined;
+
 /**
- * Registers the extension's runtime content scripts from the MV3 worker so they
- * inject on the next navigation. Needed by every spec that observes the
- * in-page widget; the extension does not self-register these yet.
+ * Prepares the test-only extension build: a copy of the production output whose
+ * manifest has the fixture host as an install-time `host_permissions` grant.
+ *
+ * Playwright cannot drive the native permission prompt, and Chromium offers no
+ * supported way to grant an optional host to an unpacked extension at runtime
+ * from outside the extension, so E2E exercises *post-grant* behaviour (per-origin
+ * registration, injection, listing, revoke) on a pre-granted build. The
+ * production build on disk is never modified — asserted in `specs/fr-15.spec.ts`.
  */
-export async function registerExtensionScripts(serviceWorker: Worker): Promise<void> {
-  await serviceWorker.evaluate(async (scripts) => {
-    const api = (globalThis as unknown as ScriptingGlobal).chrome;
-    await api.scripting.registerContentScripts(scripts);
-  }, CONTENT_SCRIPTS);
+export function prepareE2EExtension(): Promise<string> {
+  overlayPromise ??= Promise.resolve().then(() => {
+    const dir = mkdtempSync(join(tmpdir(), 'devtoolwidget-e2e-ext-'));
+    cpSync(EXTENSION_PATH, dir, { recursive: true });
+    const manifestPath = join(dir, 'manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      host_permissions?: string[];
+    };
+    manifest.host_permissions = [...(manifest.host_permissions ?? []), FIXTURE_HOST_PATTERN];
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    return dir;
+  });
+  return overlayPromise;
+}
+
+/**
+ * Waits until the extension's own `SiteAccessService` has registered the granted
+ * origin's scripts (it registers on install/startup, asynchronously). Specs call
+ * this before navigating instead of registering anything themselves.
+ */
+export async function waitForSiteScripts(serviceWorker: Worker, minCount = 2): Promise<void> {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const count = (await registeredScriptIds(serviceWorker)).length;
+    if (count >= minCount) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Timed out waiting for ${String(minCount)} registered site scripts`);
+}
+
+/** The ids of every dynamically registered content script in the worker. */
+export function registeredScriptIds(serviceWorker: Worker): Promise<readonly string[]> {
+  return serviceWorker.evaluate(async () => {
+    const api = (globalThis as unknown as ExtensionGlobal).chrome;
+    return (await api.scripting.getRegisteredContentScripts()).map((script) => script.id);
+  });
 }
 
 /** Reads the `channel` of every capture event persisted in `storage.session`. */

@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-14 Onboarding (PRD section 6).
 // BLOCKED: G3/G6 — the first-run flow records state in the worker but never
@@ -8,7 +8,7 @@ test.fixme('FR-14 shows the first-run tour and a data-handling statement', async
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

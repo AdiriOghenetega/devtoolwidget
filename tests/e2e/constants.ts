@@ -20,6 +20,12 @@ export const FIXTURE_PORT = DEFAULT_PORT;
 /** Origin of the bad-site fixture, used as Playwright's `baseURL`. */
 export const FIXTURE_ORIGIN = `http://${DEFAULT_HOST}:${String(FIXTURE_PORT)}`;
 
+/**
+ * Match pattern for the fixture host. Match patterns ignore ports, so this
+ * covers the fixture whatever port it runs on (G12).
+ */
+export const FIXTURE_HOST_PATTERN = `http://${DEFAULT_HOST}/*`;
+
 /** Set to `1` to run the extension in a real (non-headless) browser window. */
 export function isHeaded(): boolean {
   return process.env.E2E_HEADED === '1';

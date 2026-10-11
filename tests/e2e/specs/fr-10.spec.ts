@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-10 Export and share (PRD section 6).
 // BLOCKED: G5 — the export handler and the redaction pass are not wired to the
@@ -8,7 +8,7 @@ test.fixme('FR-10 exports a redacted bug report as markdown, JSON and HAR', asyn
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 /**
  * FR-1 Widget shell (PRD section 6). The content script mounts the shell in the
@@ -12,7 +12,7 @@ test.describe('FR-1 widget shell', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
 
     const page = await context.newPage();
     await page.goto('/');

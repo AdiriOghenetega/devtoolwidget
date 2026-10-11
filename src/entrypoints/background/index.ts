@@ -72,6 +72,11 @@ export default defineBackground(() => {
     // The service unregisters the scripts; nothing else to do here yet.
   });
 
+  // Reconcile on every service worker startup: registrations are not durable
+  // across a worker restart, so re-register every actually-granted origin and
+  // drop anything stale (never assume the previous registrations persisted).
+  void siteAccess.sync();
+
   const snapshotFor = async (tabId: number): Promise<PageSnapshot> => {
     const stored = await sessions.snapshot(toTabId(tabId));
     const session = stored.ok ? stored.value : undefined;

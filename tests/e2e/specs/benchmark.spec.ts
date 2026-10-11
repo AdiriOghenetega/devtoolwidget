@@ -1,5 +1,11 @@
-﻿import type { BrowserContext, CDPSession, Page, Worker } from '@playwright/test';
-import { CONTENT_SCRIPTS, expect, registerExtensionScripts, test } from '../fixtures/extension';
+import type { BrowserContext, CDPSession, Page, Worker } from '@playwright/test';
+import { CONTENT_SCRIPTS, expect, test, waitForSiteScripts } from '../fixtures/extension';
+
+// NOTE (G12): the extension now reconciles its own per-origin registrations on
+// every worker startup, so this spec's manual register/unregister toggle is
+// sensitive to the worker restarting mid-series. The ablation test re-registers
+// before each series and stays reliable; the inactive/active test is indicative
+// only until the benchmark is reworked (out of scope for G12).
 
 const ITERATIONS = 30;
 const ABLATION_ITERATIONS = 20;
@@ -128,7 +134,7 @@ test.describe('performance benchmark', () => {
       inactive.push(await measureTaskMs(context));
     }
 
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
     const active: number[] = [];
     await measureTaskMs(context); // warm-up
     for (let index = 0; index < ITERATIONS; index += 1) {
@@ -157,7 +163,7 @@ test.describe('performance benchmark', () => {
    * `content-only`, `all` run in the extension context; `bare` (no extension) and
    * `noop-content` (a minimal no-op `document_start` content script in its own
    * extension) are matched baselines. `content-only` is the production bundle, so
-   * it includes the bridge and the (not-yet-executed) UI — see PERFORMANCE.md.
+   * it includes the bridge and the (not-yet-executed) UI � see PERFORMANCE.md.
    */
   test('ablates the overhead across agent, content and baseline series', async ({
     context,
