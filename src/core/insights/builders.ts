@@ -16,7 +16,9 @@ export interface NetworkEntryOptions {
   readonly fromCache?: boolean;
   readonly total?: number;
   readonly ttfb?: number;
+  readonly startedAt?: number;
   readonly failure?: string;
+  readonly headers?: Readonly<Record<string, string | readonly string[]>>;
 }
 
 /** Options accepted by {@link PageSnapshotBuilder.console}. */
@@ -62,7 +64,7 @@ export class PageSnapshotBuilder {
       id: `n${String(this.#network.length + 1)}`,
       method: options.method ?? 'GET',
       url: options.url,
-      status: options.status ?? 200,
+      status: options.status === undefined ? 200 : options.status,
       resourceType: options.resourceType ?? 'fetch',
       transferSize: toBytes(options.transferSize ?? 0),
       decodedSize: toBytes(options.decodedSize ?? 0),
@@ -76,6 +78,8 @@ export class PageSnapshotBuilder {
         total: toMillis(options.total ?? 0),
       },
       ...(options.failure === undefined ? {} : { failure: options.failure }),
+      ...(options.startedAt === undefined ? {} : { startedAt: toMillis(options.startedAt) }),
+      ...(options.headers === undefined ? {} : { headers: options.headers }),
     });
     return this;
   }
