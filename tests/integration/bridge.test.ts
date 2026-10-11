@@ -5,7 +5,7 @@ import { createCommit, createHandshake } from '../../src/capture/bridge/handshak
 import { createCommandRouter } from '../../src/capture/session/command-router';
 import { TabSessionRegistry } from '../../src/capture/session/session-registry';
 import { TabNetworkController } from '../../src/capture/network/tab-network-controller';
-import { aSnapshot, createIdFactory, toTabId } from '../../src/core';
+import { aSnapshot, createIdFactory, ok, toTabId } from '../../src/core';
 import { createFakePorts } from '../../src/platform/fakes';
 import { PROTOCOL_VERSION } from '../../src/protocol';
 
@@ -119,6 +119,10 @@ describe('agent bridge handshake and ping', () => {
         Promise.resolve({ ok: true, bytesFreed: 0, results: [], failures: [], warnings: [] }),
       exportReport: () => Promise.resolve({ filename: 'report.md', content: '' }),
       resolveThrottle: (profile) => network.setThrottle(profile),
+      siteAccess: {
+        grant: () => Promise.resolve(ok('already-granted')),
+        revoke: () => Promise.resolve(ok(undefined)),
+      },
       tabUrl: () => Promise.resolve(undefined),
     });
     const routed = await router.handle(
