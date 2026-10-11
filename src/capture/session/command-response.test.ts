@@ -86,6 +86,24 @@ const CASES: readonly { readonly input: CommandInput; readonly result: ResultMes
       payload: { format: 'json', filename: 'report.json', content: '{}' },
     },
   },
+  {
+    input: { type: 'command.grantAccess', payload: {} },
+    result: {
+      type: 'result.grantAccess',
+      version: PROTOCOL_VERSION,
+      correlationId: 'c1',
+      payload: { origin: 'https://a.test', status: 'granted' },
+    },
+  },
+  {
+    input: { type: 'command.revokeAccess', payload: { origin: 'https://a.test' } },
+    result: {
+      type: 'result.revokeAccess',
+      version: PROTOCOL_VERSION,
+      correlationId: 'c1',
+      payload: { origin: 'https://a.test', revoked: true },
+    },
+  },
 ];
 
 describe('command response contract (integration gap G8)', () => {

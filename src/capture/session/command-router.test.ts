@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { aSnapshot, toTabId } from '../../core';
-import { createFakePorts } from '../../platform/fakes';
+import {
+  createFakePermissionsPort,
+  createFakePorts,
+  createFakeSiteScriptsPort,
+} from '../../platform/fakes';
 import { PROTOCOL_VERSION, type CommandMessage } from '../../protocol';
 import { TabNetworkController } from '../network/tab-network-controller';
+import { SiteAccessService } from '../site-access/site-access-service';
 import { createCommandRouter, type CommandRouterDeps } from './command-router';
 import { TabSessionRegistry } from './session-registry';
 
@@ -13,9 +18,13 @@ function makeRouter(overrides: Partial<CommandRouterDeps> = {}) {
   ports.tabs.addTab({ id: 7, active: true, url: 'https://a.test/page?token=secret' });
   const registry = new TabSessionRegistry(ports.storage, () => 1_000);
   const network = new TabNetworkController({ tabs: ports.tabs, rules: ports.networkRules });
+  const permissions = createFakePermissionsPort();
+  const siteScripts = createFakeSiteScriptsPort();
+  const siteAccess = new SiteAccessService({ permissions, siteScripts });
   const deps: CommandRouterDeps = {
     registry,
     network,
+    siteAccess,
     snapshot: () => Promise.resolve(aSnapshot().build()),
     clear: () =>
       Promise.resolve({ ok: true, bytesFreed: 0, results: [], failures: [], warnings: [] }),
@@ -24,7 +33,7 @@ function makeRouter(overrides: Partial<CommandRouterDeps> = {}) {
     tabUrl: () => Promise.resolve('https://a.test/page?token=secret'),
     ...overrides,
   };
-  return { router: createCommandRouter(deps), ports, registry };
+  return { router: createCommandRouter(deps), ports, registry, permissions, siteScripts };
 }
 
 function command<T extends CommandMessage['type']>(
@@ -130,6 +139,55 @@ describe('command router handlers', () => {
   it('rejects a tab-scoped command with no tab context', async () => {
     const { router } = makeRouter();
     const outcome = await router.handle(command('command.hardReload', {}), {});
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.error.code).toBe('invalid-argument');
+    }
+  });
+
+  it('grants access: requests the origin and registers its scripts', async () => {
+    const { router, siteScripts } = makeRouter();
+
+    const outcome = await router.handle(command('command.grantAccess', {}), { tabId: TAB });
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok && outcome.value.type === 'result.grantAccess') {
+      expect(outcome.value.payload).toEqual({ origin: 'https://a.test', status: 'granted' });
+    }
+    const registered = await siteScripts.list();
+    expect(registered.ok).toBe(true);
+    if (registered.ok) {
+      const ids = registered.value.map((script) => script.id);
+      expect(ids).toContain('dwsite:content:https://a.test');
+      expect(ids).toContain('dwsite:agent:https://a.test');
+    }
+  });
+
+  it('revokes access with an explicit origin and unregisters its scripts', async () => {
+    const { router, permissions, siteScripts } = makeRouter();
+    permissions.grant(['https://b.test']);
+    await router.handle(command('command.grantAccess', { origin: 'https://b.test' }), {});
+
+    const outcome = await router.handle(
+      command('command.revokeAccess', { origin: 'https://b.test' }),
+      {},
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok && outcome.value.type === 'result.revokeAccess') {
+      expect(outcome.value.payload).toEqual({ origin: 'https://b.test', revoked: true });
+    }
+    const registered = await siteScripts.list();
+    if (registered.ok) {
+      expect(registered.value.map((script) => script.id)).not.toContain(
+        'dwsite:content:https://b.test',
+      );
+    }
+  });
+
+  it('rejects granting with neither an origin nor a tab', async () => {
+    const { router } = makeRouter();
+    const outcome = await router.handle(command('command.grantAccess', {}), {});
     expect(outcome.ok).toBe(false);
     if (!outcome.ok) {
       expect(outcome.error.code).toBe('invalid-argument');

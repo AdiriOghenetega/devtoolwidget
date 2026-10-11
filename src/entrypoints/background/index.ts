@@ -93,6 +93,7 @@ export default defineBackground(() => {
         format,
       ),
     resolveThrottle: (profile) => network.setThrottle(profile),
+    siteAccess,
     tabUrl: async (tabId) => {
       const tab = await ports.tabs.get(tabId);
       return tab.ok ? tab.value.url : undefined;
