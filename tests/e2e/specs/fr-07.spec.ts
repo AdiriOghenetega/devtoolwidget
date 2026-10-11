@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-7 Network conditions (PRD section 6).
 // BLOCKED: G4 — the background router only handles `command.ping`; the
@@ -8,7 +8,7 @@ test.fixme('FR-7 toggles disable-cache for the tab and simulates latency', async
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

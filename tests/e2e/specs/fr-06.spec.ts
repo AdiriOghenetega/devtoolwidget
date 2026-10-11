@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-6 Storage and cache actions (PRD section 6).
 // BLOCKED: G5 — the clear orchestration exists but its executors are not
@@ -8,7 +8,7 @@ test.fixme('FR-6 inspects and clears cookies, storage, caches and service worker
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

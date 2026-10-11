@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-12 Deep mode (PRD section 6). Chromium only (FR-15).
 // BLOCKED: G4 — the deep controller and `setThrottle`/debugger routes are not
@@ -8,7 +8,7 @@ test.fixme('FR-12 attaches the debugger for accurate data and true throttling', 
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

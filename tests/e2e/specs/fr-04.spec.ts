@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-4 Network capture (PRD section 6).
 // Capture is now wired end to end (gap G1 closed by Slice A): the agent's
@@ -10,7 +10,7 @@ test.fixme('FR-4 records request metadata, timing phases and failure reasons', a
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, storedSessionStats, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, storedSessionStats, test } from '../fixtures/extension';
 
 const FLOOD = 3_000;
 
@@ -13,7 +13,7 @@ test.describe('memory under an event flood', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
 
     const page = await context.newPage();
     await page.goto('/');

@@ -11,23 +11,23 @@ Everything below is a wiring task; no new domain logic is implied.
 
 ## Status
 
-| Gap | Area                                     | Status                                                                                                                                                                                                                                                                              |
-| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1  | Capture wiring                           | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                                                                                    |
-| G2  | Widget shell not mounted                 | **Resolved** (Slice B)                                                                                                                                                                                                                                                              |
-| G3  | Screens/stores not connected             | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C)                                                                                                                                                                            |
-| G4  | Router handles `ping` only               | **Resolved** (Slice C) for hardReload/setThrottle/toggleDisableCache/getSnapshot/clearStorage/exportReport; setThrottle application deferred (G10)                                                                                                                                  |
-| G5  | Clear/snapshot/export                    | **Resolved** (Slice C)                                                                                                                                                                                                                                                              |
-| G6  | Site-access registration                 | **Resolved** (Slice D): the service is wired and reachable via `command.grantAccess`/`command.revokeAccess`; the optional-permission model and its UI are G12                                                                                                                       |
-| G7  | Bridge ack never received                | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                                                                                    |
-| G8  | Command reply envelope                   | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                                                                                    |
-| G9  | Disable-cache DNR rule shape             | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                                                                                                                                                              |
-| G10 | setThrottle application                  | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                                                                                                                                                            |
-| G11 | Agent bundle over PRD budget             | **Resolved** (ADR 0018): `agent.js` is 12.6 kB gz, enforced by `pnpm size`                                                                                                                                                                                                          |
-| G12 | Optional host permission + options UI    | Open: the manifest requires `<all_urls>` host access, so `grant` is `already-granted` and `revoke` cannot remove a required permission; no gesture-capable options page exists to drive it                                                                                          |
-| G13 | Agent runtime configuration              | **Resolved** (ADR 0018 amendment): the worker derives it from settings and relays it over the panel port to the agent's guarded `agent.config`; proven by `specs/agent-config.spec.ts`                                                                                              |
-| G14 | Real ESM lazy UI chunk                   | Open: WXT inlines content-script dynamic imports, so the UI is deferred in _execution_ but not split; `content.js` is 60.03 kB gz (was 57.8 kB) and "content-only" overhead is unchanged (~+80 ms). Diagnosis: fixed injection is only ~2 ms; `ui + preact` are ~23% of the bundle. |
-| G15 | Zod on the `document_start` content path | Open: the bootstrap alone is 40.27 kB gz, dominated by Zod; deferring the UI recovered ~0 of the ~77 ms content-script overhead. Diagnosis: Zod is ~48.3% of the rendered bundle; construction ~5.1 ms/load.                                                                        |
+| Gap | Area                                     | Status                                                                                                                                                                                                                                                                                                                       |
+| --- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | Capture wiring                           | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                                                                                                                             |
+| G2  | Widget shell not mounted                 | **Resolved** (Slice B)                                                                                                                                                                                                                                                                                                       |
+| G3  | Screens/stores not connected             | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C)                                                                                                                                                                                                                     |
+| G4  | Router handles `ping` only               | **Resolved** (Slice C) for hardReload/setThrottle/toggleDisableCache/getSnapshot/clearStorage/exportReport; setThrottle application deferred (G10)                                                                                                                                                                           |
+| G5  | Clear/snapshot/export                    | **Resolved** (Slice C)                                                                                                                                                                                                                                                                                                       |
+| G6  | Site-access registration                 | **Resolved** (Slice D): the service is wired and reachable via `command.grantAccess`/`command.revokeAccess`; the optional-permission model and its UI are G12                                                                                                                                                                |
+| G7  | Bridge ack never received                | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                                                                                                                             |
+| G8  | Command reply envelope                   | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                                                                                                                             |
+| G9  | Disable-cache DNR rule shape             | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                                                                                                                                                                                                       |
+| G10 | setThrottle application                  | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                                                                                                                                                                                                     |
+| G11 | Agent bundle over PRD budget             | **Resolved** (ADR 0018): `agent.js` is 12.6 kB gz, enforced by `pnpm size`                                                                                                                                                                                                                                                   |
+| G12 | Optional host permission + options UI    | **Resolved**: `host_permissions` is empty and `optional_host_permissions` holds `http://*/*`/`https://*/*`; the options page grants/revokes per host origin (ports ignored) in a gesture; the worker reconciles on install/update/startup and on `onRemoved`; new installs run on no sites. Proven by `specs/fr-15.spec.ts`. |
+| G13 | Agent runtime configuration              | **Resolved** (ADR 0018 amendment): the worker derives it from settings and relays it over the panel port to the agent's guarded `agent.config`; proven by `specs/agent-config.spec.ts`                                                                                                                                       |
+| G14 | Real ESM lazy UI chunk                   | Open: WXT inlines content-script dynamic imports, so the UI is deferred in _execution_ but not split; `content.js` is 60.03 kB gz (was 57.8 kB) and "content-only" overhead is unchanged (~+80 ms). Diagnosis: fixed injection is only ~2 ms; `ui + preact` are ~23% of the bundle.                                          |
+| G15 | Zod on the `document_start` content path | Open: the bootstrap alone is 40.27 kB gz, dominated by Zod; deferring the UI recovered ~0 of the ~77 ms content-script overhead. Diagnosis: Zod is ~48.3% of the rendered bundle; construction ~5.1 ms/load.                                                                                                                 |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -145,13 +145,53 @@ Evidence:
 - `src/entrypoints/background/index.ts:35` constructs `SiteAccessService` but no
   code path grants or registers an origin.
 
-Consequence for tests: the E2E harness registers both bundles itself from the
-service worker before navigating (`registerExtensionScripts` in
-`tests/e2e/fixtures/extension.ts`). This is a test-only stand-in for the missing
-production wiring.
+Consequence for tests: this was closed by **G12**. The harness no longer
+registers anything itself; it waits for the extension's own registration
+(`waitForSiteScripts`) after the test build pre-grants the fixture host (see G12).
 
 Blocks: FR-1, FR-2, FR-13 (and, transitively, every FR that needs the in-page
-widget).
+widget) — all unblocked by G12.
+
+## G12 — Optional host permission and the options UI (RESOLVED)
+
+Resolved. What changed:
+
+- **Manifest (PRD 7).** `<all_urls>` is gone from required host access: the
+  content and agent entrypoints declare no `matches` (they are registered per
+  granted origin), so WXT adds no `host_permissions`. `optional_host_permissions`
+  holds `http://*/*` and `https://*/*`, so any site discovered at runtime can be
+  granted. Verified in the Chromium **and** Firefox `manifest.json`.
+- **Gesture-capable options page.** A new `entrypoints/options` page (WXT
+  `options_ui`) renders `ui/options/SiteAccessPage`. The grant button _is_ the
+  user gesture `chrome.permissions.request` requires: it runs first in the click
+  handler, before any other await. Registration stays in the worker
+  (`command.grantAccess` / `command.revokeAccess`), so no permission logic is
+  duplicated in the UI.
+- **Host origins, not patterns (ports ignored).** `core/origin.ts` converts
+  between Chrome match patterns and port-less host origins, and the permissions
+  adapter is the only place that speaks patterns. Granting `http://localhost:3000`
+  therefore grants `http://localhost` on any port, and the UI says so in plain
+  language.
+- **Reconciliation, never assumptions.** The worker calls `SiteAccessService.sync()`
+  on `onInstalled` (install **and** update) and `onStartup`, re-registering for
+  granted origins and dropping stale registrations, and listens for
+  `chrome.permissions.onRemoved` so revoking from the browser's own extension
+  settings also unregisters.
+- **Default off.** A new install grants nothing, so the extension injects on no
+  site until the user opts in.
+
+Evidence: `specs/fr-15.spec.ts` (production manifest has no required host access;
+injects only on a granted origin; options page lists and revokes) and the manual
+prompt flow in `docs/QA.md`. Unit coverage: `core/origin`,
+`platform/chrome/permissions-adapter`, `capture/site-access`, `ui/options/SiteAccessPage`.
+
+Testing note: Playwright cannot click the native prompt and Chromium offers no
+supported way to grant an optional host to an unpacked extension from outside it,
+so E2E runs against a test-only copy of the build with the fixture host
+pre-granted as a _required_ permission (`prepareE2EExtension`). `fr-15.spec.ts`
+asserts that pre-grant is never in the shipped manifest. That copy's required
+grant cannot be removed, so the E2E revoke assertion is that the registration is
+dropped; permission _removal_ is covered by the manual flow.
 
 ## G7 — The main-world bridge ack never reaches the content script (RESOLVED, Slice A)
 

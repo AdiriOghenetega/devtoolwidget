@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-8 Insights engine (PRD sections 6 and 10).
 // BLOCKED: G1 — rules run only over collector output, and no collector output
@@ -8,7 +8,7 @@ test.fixme('FR-8 ranks findings from the live page and links each to an action',
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 

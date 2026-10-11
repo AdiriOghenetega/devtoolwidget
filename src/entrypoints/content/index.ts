@@ -51,7 +51,9 @@ function toCommand(action: ActionRef): CommandInput {
  */
 export default defineContentScript({
   registration: 'runtime',
-  matches: ['<all_urls>'],
+  // No `matches`: this script is registered per granted origin at runtime
+  // (SiteAccessService, ADR 0017/G12), so it must not add `<all_urls>` to the
+  // manifest's required `host_permissions` (WXT adds runtime `matches` there).
   runAt: 'document_start',
   main(ctx) {
     const root = hostWidgetRoot();

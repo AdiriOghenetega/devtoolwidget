@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 /**
  * Lazy mount (ADR 0019). At `document_start` the content script does only the
@@ -17,7 +17,7 @@ test.describe('lazy mount (ADR 0019)', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
     const page = await context.newPage();
     await page.goto('/');
 

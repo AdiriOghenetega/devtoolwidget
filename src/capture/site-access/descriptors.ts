@@ -1,24 +1,27 @@
+import { toHostOrigin, toHostPattern } from '../../core';
 import type { SiteScriptDescriptor } from '../../platform/ports';
 
 /** Prefix for dynamically registered site script ids. */
 export const SITE_SCRIPT_PREFIX = 'dwsite';
 
-/** Deterministic id for the isolated-world content script of an origin. */
+/** Deterministic id for the isolated-world content script of an origin's host. */
 export function contentScriptId(origin: string): string {
-  return `${SITE_SCRIPT_PREFIX}:content:${origin}`;
+  return `${SITE_SCRIPT_PREFIX}:content:${toHostOrigin(origin)}`;
 }
 
-/** Deterministic id for the main-world agent script of an origin. */
+/** Deterministic id for the main-world agent script of an origin's host. */
 export function agentScriptId(origin: string): string {
-  return `${SITE_SCRIPT_PREFIX}:agent:${origin}`;
+  return `${SITE_SCRIPT_PREFIX}:agent:${toHostOrigin(origin)}`;
 }
 
 /**
- * The content and agent scripts to register for a granted origin (PRD 8.1). The
- * `js` paths are the WXT build outputs for the content and agent entrypoints.
+ * The content and agent scripts to register for a granted origin (PRD 8.1). Ids
+ * and matches are keyed by the port-less host origin, so a grant for
+ * `http://localhost:4178` covers `http://localhost` on any port (match patterns
+ * ignore ports, G12). The `js` paths are the WXT build outputs.
  */
 export function siteScriptDescriptors(origin: string): readonly SiteScriptDescriptor[] {
-  const matches = [`${origin}/*`];
+  const matches = [toHostPattern(origin)];
   return [
     {
       id: contentScriptId(origin),

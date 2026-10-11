@@ -11,7 +11,7 @@ fixture surface it exercises and its current status. The suite lives in
 - **fixme** — written and type-checked, but marked `test.fixme` because the
   extension is not wired end to end yet. `test.fixme` is skipped, so it never
   fails the build. The blocker is named in the spec and in
-  [`INTEGRATION-GAPS.md`](./INTEGRATION-GAPS.md) (`G1`…`G8`).
+  [`INTEGRATION-GAPS.md`](./INTEGRATION-GAPS.md) (`G1`…`G15`).
 
 ## How to run
 
@@ -47,28 +47,28 @@ Its routing is pure and unit-tested in `server.test.ts` (runs under `pnpm test`)
 
 ## Matrix
 
-| FR    | Requirement               | Spec                            | Fixture routes                                   | Status  | Blocker                                                                                                                   |
-| ----- | ------------------------- | ------------------------------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| —     | Harness / extension loads | `specs/smoke.spec.ts`           | `/ok`, `/`                                       | passing | —                                                                                                                         |
-| —     | Capture wiring (G1)       | `specs/capture.spec.ts`         | `/ok`                                            | passing | —                                                                                                                         |
-| —     | Bridge hardening (G7)     | `specs/bridge-security.spec.ts` | `/spy`                                           | passing | —                                                                                                                         |
-| —     | Command router (G4)       | `specs/commands.spec.ts`        | `/`, `/ok`                                       | passing | hard reload only; disable-cache is `fixme` (G9)                                                                           |
-| —     | Agent config (G13)        | `specs/agent-config.spec.ts`    | `/`, `/ok`                                       | passing | a settings change reaches the agent without a reload                                                                      |
-| FR-1  | Widget shell              | `specs/fr-01.spec.ts`           | `/`                                              | passing | —                                                                                                                         |
-| FR-2  | Overview screen           | `specs/fr-02.spec.ts`           | `/`, `/slow`, `/status/500`                      | passing | —                                                                                                                         |
-| FR-3  | Console capture           | `specs/fr-03.spec.ts`           | `/` (Trigger error), `/app.js`                   | fixme   | storage/snapshots tabs (Slice C); capture done (Slice A)                                                                  |
-| FR-4  | Network capture           | `specs/fr-04.spec.ts`           | `/slow`, `/status/404`, `/status/500`, `/big`    | fixme   | capture done (Slice A); richer detail (Slice C)                                                                           |
-| FR-5  | Performance capture       | `specs/fr-05.spec.ts`           | `/huge.png`, `/blocking.js`                      | fixme   | vitals client                                                                                                             |
-| FR-6  | Storage and cache         | `specs/fr-06.spec.ts`           | `/app.js`, `/sw.js`                              | fixme   | storage tab (Slice D); clearStorage handler wired (Slice C)                                                               |
-| FR-7  | Network conditions        | `specs/fr-07.spec.ts`           | `/app.js`, `/nocache.js`                         | fixme   | G9 (DNR rule shape), G10 (throttle application)                                                                           |
-| FR-8  | Insights engine           | `specs/fr-08.spec.ts`           | `/duplicate`, `/nocache.js`, `/big`, `/huge.png` | fixme   | G3 (rules run; panel surfacing partial)                                                                                   |
-| FR-9  | Snapshots and comparison  | `specs/fr-09.spec.ts`           | `/`, `/slow`                                     | fixme   | G5                                                                                                                        |
-| FR-10 | Export and share          | `specs/fr-10.spec.ts`           | `/`                                              | fixme   | G5                                                                                                                        |
-| FR-11 | Settings and profiles     | `specs/fr-11.spec.ts`           | `/`                                              | fixme   | G3                                                                                                                        |
-| FR-12 | Deep mode                 | `specs/fr-12.spec.ts`           | `/`                                              | fixme   | G4                                                                                                                        |
-| FR-13 | Keyboard/accessibility    | `specs/fr-13.spec.ts`           | `/`                                              | fixme   | G6, shortcut binding                                                                                                      |
-| FR-14 | Onboarding                | `specs/fr-14.spec.ts`           | `/`                                              | fixme   | G3, G6                                                                                                                    |
-| FR-15 | Browser support           | —                               | —                                                | n/a     | Chromium-only suite. Per-origin access is covered by the command-router tests, not E2E (no gesture-capable UI yet — G12). |
+| FR    | Requirement               | Spec                            | Fixture routes                                   | Status  | Blocker                                                                                                                              |
+| ----- | ------------------------- | ------------------------------- | ------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| —     | Harness / extension loads | `specs/smoke.spec.ts`           | `/ok`, `/`                                       | passing | —                                                                                                                                    |
+| —     | Capture wiring (G1)       | `specs/capture.spec.ts`         | `/ok`                                            | passing | —                                                                                                                                    |
+| —     | Bridge hardening (G7)     | `specs/bridge-security.spec.ts` | `/spy`                                           | passing | —                                                                                                                                    |
+| —     | Command router (G4)       | `specs/commands.spec.ts`        | `/`, `/ok`                                       | passing | hard reload only; disable-cache is `fixme` (G9)                                                                                      |
+| —     | Agent config (G13)        | `specs/agent-config.spec.ts`    | `/`, `/ok`                                       | passing | a settings change reaches the agent without a reload                                                                                 |
+| FR-1  | Widget shell              | `specs/fr-01.spec.ts`           | `/`                                              | passing | —                                                                                                                                    |
+| FR-2  | Overview screen           | `specs/fr-02.spec.ts`           | `/`, `/slow`, `/status/500`                      | passing | —                                                                                                                                    |
+| FR-3  | Console capture           | `specs/fr-03.spec.ts`           | `/` (Trigger error), `/app.js`                   | fixme   | storage/snapshots tabs (Slice C); capture done (Slice A)                                                                             |
+| FR-4  | Network capture           | `specs/fr-04.spec.ts`           | `/slow`, `/status/404`, `/status/500`, `/big`    | fixme   | capture done (Slice A); richer detail (Slice C)                                                                                      |
+| FR-5  | Performance capture       | `specs/fr-05.spec.ts`           | `/huge.png`, `/blocking.js`                      | fixme   | vitals client                                                                                                                        |
+| FR-6  | Storage and cache         | `specs/fr-06.spec.ts`           | `/app.js`, `/sw.js`                              | fixme   | storage tab (Slice D); clearStorage handler wired (Slice C)                                                                          |
+| FR-7  | Network conditions        | `specs/fr-07.spec.ts`           | `/app.js`, `/nocache.js`                         | fixme   | G9 (DNR rule shape), G10 (throttle application)                                                                                      |
+| FR-8  | Insights engine           | `specs/fr-08.spec.ts`           | `/duplicate`, `/nocache.js`, `/big`, `/huge.png` | fixme   | G3 (rules run; panel surfacing partial)                                                                                              |
+| FR-9  | Snapshots and comparison  | `specs/fr-09.spec.ts`           | `/`, `/slow`                                     | fixme   | G5                                                                                                                                   |
+| FR-10 | Export and share          | `specs/fr-10.spec.ts`           | `/`                                              | fixme   | G5                                                                                                                                   |
+| FR-11 | Settings and profiles     | `specs/fr-11.spec.ts`           | `/`                                              | fixme   | G3                                                                                                                                   |
+| FR-12 | Deep mode                 | `specs/fr-12.spec.ts`           | `/`                                              | fixme   | G4                                                                                                                                   |
+| FR-13 | Keyboard/accessibility    | `specs/fr-13.spec.ts`           | `/`                                              | fixme   | G6, shortcut binding                                                                                                                 |
+| FR-14 | Onboarding                | `specs/fr-14.spec.ts`           | `/`                                              | fixme   | G3, G6                                                                                                                               |
+| FR-15 | Browser support           | `specs/fr-15.spec.ts`           | `/`                                              | passing | Chromium-only suite. Per-origin access: no required host access, injects only on a granted origin, options page lists/revokes (G12). |
 
 > Slice A closed **G1**, **G7** and **G8**; Slice B closed **G2** and wired the
 > Overview + console/network/performance screens (G3), so `fr-01` and `fr-02` now
@@ -95,11 +95,19 @@ after the agent — the strongest position a page script can reach — and it mu
 observe zero bridge messages, zero transferred ports and zero capture batches,
 while the bridge still reports `pong`.
 
-Because the extension does not register its own runtime scripts yet (G6), the
-harness registers both bundles from the worker across all pages
-(`registerExtensionScripts`) before navigating. This mirrors what
-`SiteAccessService` will do once wired and is the only test-side accommodation in
-the suite.
+`specs/fr-15.spec.ts` proves per-origin access (G12): the shipped manifest
+requires no host access, the extension injects only on a granted host (and not on
+an ungranted one), and the options page lists the granted host and revokes it.
+
+Because the extension now registers its own runtime scripts for granted origins
+(G12), the harness registers nothing itself: it waits for the extension's
+registration (`waitForSiteScripts`) after the test build pre-grants the fixture
+host. Playwright cannot click the native permission prompt and Chromium offers no
+supported way to grant an optional host to an unpacked extension from outside it,
+so the suite loads a test-only copy of the build whose manifest has the fixture
+host as a required `host_permissions` grant (`prepareE2EExtension`).
+`specs/fr-15.spec.ts` asserts that pre-grant is never in the shipped manifest, and
+the real prompt flow is a manual step in [`QA.md`](./QA.md).
 
 ## Promoting a fixme to a real test
 

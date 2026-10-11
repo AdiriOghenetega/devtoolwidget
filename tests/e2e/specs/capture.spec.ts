@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, storedChannelNames, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, storedChannelNames, test } from '../fixtures/extension';
 
 /**
  * Capture wiring end to end (FR-3, FR-4; integration gap G1). The main-world
@@ -11,7 +11,7 @@ test.describe('capture wiring', () => {
     context,
     serviceWorker,
   }) => {
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
 
     const page = await context.newPage();
     await page.goto('/');

@@ -91,7 +91,7 @@ function captureTarget(): CaptureTarget {
  */
 export default defineContentScript({
   registration: 'runtime',
-  matches: ['<all_urls>'],
+  // No `matches`: registered per granted origin at runtime (ADR 0017/G12).
   runAt: 'document_start',
   world: 'MAIN',
   main() {

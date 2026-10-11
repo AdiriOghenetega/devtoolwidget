@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 /**
  * The harness smoke test. It proves the whole bootstrap works in a real browser:
@@ -24,7 +24,7 @@ test.describe('extension smoke', () => {
     );
     expect(manifestName).toBe('devToolWidget');
 
-    await registerExtensionScripts(serviceWorker);
+    await waitForSiteScripts(serviceWorker);
 
     const page = await context.newPage();
     await page.goto('/');

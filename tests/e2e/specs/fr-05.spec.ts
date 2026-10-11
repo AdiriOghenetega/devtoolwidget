@@ -1,4 +1,4 @@
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { expect, waitForSiteScripts, test } from '../fixtures/extension';
 
 // FR-5 Performance capture (PRD section 6).
 // The agent's performance collector is wired into the pipeline and streams
@@ -10,7 +10,7 @@ test.fixme('FR-5 reports Core Web Vitals with attribution and long tasks', async
   context,
   serviceWorker,
 }) => {
-  await registerExtensionScripts(serviceWorker);
+  await waitForSiteScripts(serviceWorker);
   const page = await context.newPage();
   await page.goto('/');
 
