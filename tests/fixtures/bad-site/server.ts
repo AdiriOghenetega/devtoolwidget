@@ -16,6 +16,7 @@ import {
   NOCACHE_JS,
   SERVICE_WORKER_JS,
   SLOW_DELAY_MS,
+  SPY_HTML,
   bigPayload,
   hugePng,
 } from './pages.ts';
@@ -59,6 +60,8 @@ export function resolveRoute(pathname: string): RouteResponse {
   switch (pathname) {
     case '/':
       return { status: 200, headers: { 'content-type': HTML }, body: INDEX_HTML, delayMs: 0 };
+    case '/spy':
+      return { status: 200, headers: { 'content-type': HTML }, body: SPY_HTML, delayMs: 0 };
     case '/app.js':
       return {
         status: 200,

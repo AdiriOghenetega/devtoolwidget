@@ -1,9 +1,11 @@
 import { expect, registerExtensionScripts, test } from '../fixtures/extension';
 
 // FR-4 Network capture (PRD section 6).
-// BLOCKED: G1 — the network collector and the fetch/XHR/WebSocket wrappers are
-// not wired to the content bridge.
-// See docs/INTEGRATION-GAPS.md#g1.
+// Capture is now wired end to end (gap G1 closed by Slice A): the agent's
+// network collector patches `fetch` and streams typed events into the per-tab
+// session store. This spec asserts the PANEL, which still needs Slice B (G2/G3).
+// The capture half is covered by tests/e2e/specs/capture.spec.ts.
+// See docs/E2E-TRACEABILITY.md.
 test.fixme('FR-4 records request metadata, timing phases and failure reasons', async ({
   context,
   serviceWorker,

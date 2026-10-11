@@ -46,6 +46,13 @@ describe('resolveRoute', () => {
     expect(bodyOf('/duplicate')).toBe(bodyOf('/app.js'));
   });
 
+  it('serves the hostile spy page with a capturing message listener', () => {
+    const route = resolveRoute('/spy');
+    expect(route.status).toBe(200);
+    expect(route.body).toContain('__dtwSpy');
+    expect(route.body).toContain('devtoolwidget:bridge');
+  });
+
   it('delays the slow endpoint by the configured amount', () => {
     expect(resolveRoute('/slow').delayMs).toBe(SLOW_DELAY_MS);
   });
