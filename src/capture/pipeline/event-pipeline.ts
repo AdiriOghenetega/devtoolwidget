@@ -1,48 +1,43 @@
-import { EVENT_BATCH_INTERVAL, toMillis, type Millis, type TabId } from '../../core';
+import {
+  EVENT_BATCH_INTERVAL,
+  MAX_BATCH_EVENTS,
+  type CaptureBatch,
+  type CaptureEvent,
+} from '../../core';
 import type { ClockPort } from '../../platform/ports';
-
-/** A single captured event flowing through the pipeline. */
-export interface PipelineEvent {
-  readonly kind: string;
-  readonly at: Millis;
-}
-
-/** A flushed batch of events with a monotonic sequence per pipeline. */
-export interface Batch {
-  readonly tabId: TabId;
-  readonly sequence: number;
-  readonly events: readonly PipelineEvent[];
-}
 
 /** Schedules a callback and returns a cancel function (injected for tests). */
 export type Scheduler = (callback: () => void, delayMs: number) => () => void;
 
 /** Default cap on buffered events before backpressure drops the oldest. */
-export const DEFAULT_MAX_BUFFERED = 1_000;
+export const DEFAULT_MAX_BUFFERED = MAX_BATCH_EVENTS;
 
 /** Options for {@link EventPipeline}. */
 export interface EventPipelineOptions {
-  readonly tabId: TabId;
   readonly clock: ClockPort;
-  readonly emit: (batch: Batch) => void;
+  readonly emit: (batch: CaptureBatch) => void;
   readonly schedule?: Scheduler;
   readonly intervalMs?: number;
   readonly maxBuffered?: number;
 }
 
 /**
- * Batches captured events and flushes them every `intervalMs` (default 100ms,
- * PRD 7). Backpressure policy: when the buffer is full, the **oldest** buffered
- * event is dropped and the dropped counter is incremented, so the pipeline keeps
- * the freshest data and never grows unbounded. Navigations flush the current
- * batch and, unless `preserveLog` is set, start a fresh log for the new page.
+ * Batches typed capture events and flushes them every `intervalMs` (default
+ * 100 ms, PRD 7). Backpressure policy: when the buffer is full, the **oldest**
+ * buffered event is dropped and the dropped counter is incremented, so the
+ * pipeline keeps the freshest data and never grows unbounded. Navigations flush
+ * the current batch and, unless `preserveLog` is set, start a fresh log for the
+ * new page.
+ *
+ * The pipeline is tab-agnostic: the main-world agent owns one per document and
+ * the service worker stamps the tab id when it stores the batch (PRD 8.4).
  */
 export class EventPipeline {
   readonly #options: EventPipelineOptions;
   readonly #intervalMs: number;
   readonly #maxBuffered: number;
   readonly #schedule: Scheduler;
-  #buffer: PipelineEvent[] = [];
+  #buffer: CaptureEvent[] = [];
   #sequence = 0;
   #dropped = 0;
   #cancel: (() => void) | undefined;
@@ -71,7 +66,7 @@ export class EventPipeline {
   }
 
   /** Buffers an event, dropping the oldest when the buffer is full. */
-  push(event: PipelineEvent): void {
+  push(event: CaptureEvent): void {
     if (this.#disposed) {
       return;
     }
@@ -88,9 +83,9 @@ export class EventPipeline {
     if (this.#buffer.length === 0) {
       return;
     }
-    const batch: Batch = {
-      tabId: this.#options.tabId,
+    const batch: CaptureBatch = {
       sequence: this.#sequence,
+      dropped: this.#dropped,
       events: [...this.#buffer],
     };
     this.#sequence += 1;
@@ -107,6 +102,7 @@ export class EventPipeline {
     if (options.preserveLog !== true) {
       this.#buffer = [];
       this.#sequence += 1;
+      this.#dropped = 0;
     }
   }
 
@@ -138,11 +134,3 @@ function defaultSchedule(callback: () => void, delayMs: number): () => void {
     globalThis.clearTimeout(handle);
   };
 }
-
-/** Convenience for tests: an event stamped with the injected clock. */
-export function pipelineEvent(kind: string, at: Millis): PipelineEvent {
-  return { kind, at };
-}
-
-/** Re-export so callers can brand timestamps when building events. */
-export { toMillis };

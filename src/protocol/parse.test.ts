@@ -1,28 +1,40 @@
 import { describe, expect, it } from 'vitest';
+import { MAX_BATCH_EVENTS } from '../core';
 import { parseCommand, parseEvent, parseMessage, parseResult } from './parse';
 import { PROTOCOL_VERSION } from './version';
 
+const consoleEntry = {
+  id: 'id1',
+  kind: 'uncaught',
+  level: 'error',
+  timestamp: 10,
+  args: [{ type: 'string', value: 'boom' }],
+  count: 1,
+};
+
 const consoleEvent = {
-  type: 'event.console',
+  type: 'event.batch',
   version: PROTOCOL_VERSION,
   correlationId: 'c1',
   payload: {
-    id: 'id1',
-    kind: 'uncaught',
-    level: 'error',
-    timestamp: 10,
-    args: [{ type: 'string', value: 'boom' }],
-    count: 1,
+    sequence: 0,
+    dropped: 0,
+    events: [{ at: 10, channel: 'console', entry: consoleEntry }],
   },
 };
 
 describe('parseMessage', () => {
-  it('parses a valid event and re-brands numbers', () => {
+  it('parses a valid event batch and re-brands numbers', () => {
     const result = parseMessage(consoleEvent);
     expect(result.ok).toBe(true);
-    if (result.ok && result.value.type === 'event.console') {
-      expect(result.value.payload.kind).toBe('uncaught');
-      expect(result.value.payload.timestamp).toBe(10);
+    if (result.ok && result.value.type === 'event.batch') {
+      const first = result.value.payload.events[0];
+      expect(first?.channel).toBe('console');
+      if (first?.channel === 'console') {
+        expect(first.entry.kind).toBe('uncaught');
+        expect(first.entry.timestamp).toBe(10);
+        expect(first.at).toBe(10);
+      }
     }
   });
 
@@ -83,7 +95,43 @@ describe('parseMessage', () => {
   it('returns invalid-payload for a malformed payload', () => {
     const result = parseMessage({
       ...consoleEvent,
-      payload: { ...consoleEvent.payload, id: '' },
+      payload: {
+        ...consoleEvent.payload,
+        events: [{ at: 10, channel: 'console', entry: { ...consoleEntry, id: '' } }],
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe('invalid-payload');
+    }
+  });
+
+  it('accepts a batch exactly at the wire size cap', () => {
+    const events = Array.from({ length: MAX_BATCH_EVENTS }, (_, index) => ({
+      at: index,
+      channel: 'console',
+      entry: { ...consoleEntry, id: `id-${String(index)}` },
+    }));
+    const result = parseEvent({
+      type: 'event.batch',
+      version: PROTOCOL_VERSION,
+      correlationId: 'c7',
+      payload: { sequence: 0, dropped: 0, events },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects a batch above the wire size cap', () => {
+    const events = Array.from({ length: MAX_BATCH_EVENTS + 1 }, (_, index) => ({
+      at: index,
+      channel: 'console',
+      entry: { ...consoleEntry, id: `id-${String(index)}` },
+    }));
+    const result = parseEvent({
+      type: 'event.batch',
+      version: PROTOCOL_VERSION,
+      correlationId: 'c8',
+      payload: { sequence: 0, dropped: 0, events },
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {

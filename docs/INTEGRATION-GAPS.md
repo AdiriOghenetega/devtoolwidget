@@ -3,13 +3,31 @@
 The layers are implemented and unit-tested, but the extension is **not wired
 end to end**: the entrypoints that would connect them are still stubs. This file
 records exactly what is missing, with evidence, so the E2E specs can name the
-blocker instead of failing. Each gap has a stable id (`G1`…`G6`) used by the
+blocker instead of failing. Each gap has a stable id (`G1`…`G8`) used by the
 `test.fixme` comments in `tests/e2e/specs/` and by
 [`E2E-TRACEABILITY.md`](./E2E-TRACEABILITY.md).
 
 Everything below is a wiring task; no new domain logic is implied.
 
-## G1 — Collectors are not wired to the bridge or pipeline
+## Status
+
+| Gap | Area                         | Status                           |
+| --- | ---------------------------- | -------------------------------- |
+| G1  | Capture wiring               | **Resolved** (Slice A, ADR 0013) |
+| G2  | Widget shell not mounted     | Open (Slice B)                   |
+| G3  | Screens/stores not connected | Open (Slice B)                   |
+| G4  | Router handles `ping` only   | Open (Slice C)                   |
+| G5  | Clear/snapshot/export        | Open (Slice C)                   |
+| G6  | Site-access registration     | Open (Slice D)                   |
+| G7  | Bridge ack never received    | **Resolved** (Slice A, ADR 0013) |
+| G8  | Command reply envelope       | **Resolved** (Slice A, ADR 0013) |
+
+## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
+
+> Resolved by Slice A: `capture/agent/capture-agent.ts` boots the console, network
+> and performance collectors into one `EventPipeline`; the agent entrypoint streams
+> `event.batch` over the bridge; the worker stores it (ADR 0013). Covered by
+> `src/capture/agent/capture-agent.test.ts` and `tests/e2e/specs/capture.spec.ts`.
 
 The console, network and performance collectors and the event pipeline exist and
 have tests, but no entrypoint imports them. `src/entrypoints/content/index.ts`
@@ -26,7 +44,8 @@ Evidence:
 - `src/capture/pipeline/event-pipeline.ts` is exported by
   `src/capture/pipeline/index.ts` but consumed nowhere in `src/entrypoints`.
 
-Blocks: FR-3, FR-4, FR-5, FR-8.
+Blocks: FR-3, FR-4, FR-5, FR-8. (Capture now works; these FRs are blocked only by
+the panel mount — see G2/G3.)
 
 ## G2 — The widget shell is not mounted in the content script
 
@@ -111,7 +130,13 @@ production wiring.
 Blocks: FR-1, FR-2, FR-13 (and, transitively, every FR that needs the in-page
 widget).
 
-## G7 — The main-world bridge ack never reaches the content script
+## G7 — The main-world bridge ack never reaches the content script (RESOLVED, Slice A)
+
+> Resolved by Slice A with a measured root cause: the first ack takes ~98 ms while
+> the content script abandons each attempt after 50 ms, and the agent latched onto
+> the first handshake, so the two policies deadlocked. The fix is tentative
+> adoption plus a content-side `commit` (ADR 0013). Covered by
+> `tests/integration/bridge.test.ts` and `tests/e2e/specs/bridge-security.spec.ts`.
 
 Surfaced by the E2E harness (`tests/e2e/specs/smoke.spec.ts`). In a real Chrome
 MV3 context the agent installs, **adopts the handshake and posts the ack**
@@ -135,7 +160,13 @@ Evidence:
 Blocks: FR-1, FR-2, FR-3, FR-4, FR-5, FR-8, FR-13 (any in-page feature) and the
 `pong` assertion in the smoke test.
 
-## G8 — The worker's ping reply is rejected by the content script
+## G8 — The worker's ping reply is rejected by the content script (RESOLVED, Slice A)
+
+> Resolved by Slice A: `protocol` defines a single `commandResponseSchema`
+> (`result | error`), the worker sends it via `toCommandResponse`, and the content
+> script parses it with `parseCommandResponse` (ADR 0013). Covered by the contract
+> test in `src/capture/session/command-response.test.ts` and the `pong` assertion
+> in `tests/e2e/specs/smoke.spec.ts`.
 
 Even with a working bridge, the round trip fails with the status `ping failed`.
 The command router returns `Result<ResultMessage, PlatformError>`

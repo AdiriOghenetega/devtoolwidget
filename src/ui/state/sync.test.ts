@@ -42,16 +42,26 @@ describe('synchronize (snapshot then deltas)', () => {
     expect(store.networkCount.value).toBe(1);
 
     responder.send({
-      type: 'event.console',
+      type: 'event.batch',
       version: PROTOCOL_VERSION,
       correlationId: 'e1',
       payload: {
-        id: 'new',
-        kind: 'uncaught',
-        level: 'error',
-        timestamp: toMillis(Number(snapshot.capturedAt) + 1),
-        args: [],
-        count: 1,
+        sequence: 0,
+        dropped: 0,
+        events: [
+          {
+            at: toMillis(Number(snapshot.capturedAt) + 1),
+            channel: 'console',
+            entry: {
+              id: 'new',
+              kind: 'uncaught',
+              level: 'error',
+              timestamp: toMillis(Number(snapshot.capturedAt) + 1),
+              args: [],
+              count: 1,
+            },
+          },
+        ],
       },
     });
     expect(store.consoleErrors.value).toBe(1);

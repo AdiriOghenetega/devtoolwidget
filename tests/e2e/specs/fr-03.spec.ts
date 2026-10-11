@@ -1,9 +1,12 @@
 import { expect, registerExtensionScripts, test } from '../fixtures/extension';
 
 // FR-3 Console capture (PRD section 6).
-// BLOCKED: G1 — the console collector exists but is not wired to the content
-// bridge or the event pipeline, so nothing reaches the panel.
-// See docs/INTEGRATION-GAPS.md#g1.
+// Capture is now wired end to end (gap G1 closed by Slice A): the agent's
+// console collector streams typed events through the bridge into the per-tab
+// session store. This spec asserts the PANEL, which still needs Slice B
+// (gaps G2/G3): the widget shell and screens are not mounted yet. The capture
+// half is covered by tests/e2e/specs/capture.spec.ts.
+// See docs/E2E-TRACEABILITY.md.
 test.fixme('FR-3 captures console output, uncaught errors and CSP violations', async ({
   context,
   serviceWorker,

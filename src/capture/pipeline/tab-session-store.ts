@@ -1,39 +1,44 @@
 import { z } from 'zod';
-import { toMillis, type Result, type TabId } from '../../core';
+import type { CaptureEvent, Result, TabId } from '../../core';
 import type { PlatformError, StoragePort } from '../../platform/ports';
-import type { Batch, PipelineEvent } from './event-pipeline';
+import { captureEventSchema } from '../../protocol';
 
-/** The persisted per-tab pipeline session (PRD 8.5, 7). */
+/** The persisted per-tab capture session (PRD 8.5, 7). */
 export interface StoredSession {
   readonly url: string;
   readonly sequence: number;
-  readonly events: readonly PipelineEvent[];
+  readonly events: readonly CaptureEvent[];
   readonly dropped: number;
 }
 
-const eventSchema = z.object({
-  kind: z.string(),
-  at: z.number().transform((value) => toMillis(value)),
-});
-const sessionSchema = z.object({
+/** A batch stamped with the tab it belongs to (the service worker adds the id). */
+export interface StoredBatch {
+  readonly tabId: TabId;
+  readonly sequence: number;
+  readonly dropped: number;
+  readonly events: readonly CaptureEvent[];
+}
+
+const sessionSchema: z.ZodType<StoredSession> = z.object({
   url: z.string(),
   sequence: z.number().int(),
-  events: z.array(eventSchema),
+  events: z.array(captureEventSchema),
   dropped: z.number().int(),
 });
 const STORAGE_VERSION = 1;
 
 /** Options for {@link TabSessionStore}. */
 export interface TabSessionStoreOptions {
-  /** Maximum events retained per tab (older events are trimmed). */
+  /** Maximum events retained per tab (the ring-buffer cap; older events trim). */
   readonly maxEvents?: number;
 }
 
 /**
- * The per-tab session store (PRD 8.1), persisted through the storage port in
- * `storage.session` (see ADR 0012). The stored document carries a monotonic
- * sequence so out-of-order batches are ignored, and it survives a service-worker
- * restart because it lives in `storage.session`, not in worker memory.
+ * The per-tab capture session store (PRD 8.1), persisted through the storage port
+ * in `storage.session` (see ADR 0012). It applies the ring-buffer cap
+ * (`maxEvents`), records the pipeline's cumulative dropped count from each batch,
+ * and keeps a monotonic sequence so out-of-order batches are ignored. Because it
+ * lives in `storage.session`, it survives a service-worker restart.
  */
 export class TabSessionStore {
   readonly #storage: StoragePort;
@@ -61,10 +66,11 @@ export class TabSessionStore {
   }
 
   /**
-   * Applies a batch, appending its events. A batch whose sequence is not newer
-   * than the stored one is ignored (out-of-order/stale) and returns `false`.
+   * Applies a batch, appending its events and recording the dropped count. A
+   * batch whose sequence is not newer than the stored one is ignored
+   * (out-of-order/stale) and returns `false`.
    */
-  async applyBatch(batch: Batch): Promise<Result<boolean, PlatformError>> {
+  async applyBatch(batch: StoredBatch): Promise<Result<boolean, PlatformError>> {
     const current = await this.snapshot(batch.tabId);
     if (!current.ok) {
       return current;
@@ -78,7 +84,7 @@ export class TabSessionStore {
       url: previous?.url ?? '',
       sequence: batch.sequence,
       events,
-      dropped: previous?.dropped ?? 0,
+      dropped: batch.dropped,
     };
     const written = await this.#storage.write(
       'session',
@@ -104,7 +110,7 @@ export class TabSessionStore {
       url,
       sequence: previous?.sequence ?? -1,
       events: options.preserveLog === true ? (previous?.events ?? []) : [],
-      dropped: previous?.dropped ?? 0,
+      dropped: options.preserveLog === true ? (previous?.dropped ?? 0) : 0,
     };
     return this.#storage.write(
       'session',

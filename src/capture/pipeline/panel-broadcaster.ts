@@ -1,17 +1,17 @@
-import type { PipelineEvent } from './event-pipeline';
+import type { CaptureEvent } from '../../core';
 
 /** The full panel state sent when a panel opens. */
 export interface PanelState {
   readonly tabId: number;
   readonly sequence: number;
-  readonly events: readonly PipelineEvent[];
+  readonly events: readonly CaptureEvent[];
   readonly dropped: number;
 }
 
 /** Messages sent to a panel. */
 export type PanelMessage =
   | { readonly type: 'snapshot'; readonly state: PanelState }
-  | { readonly type: 'delta'; readonly event: PipelineEvent };
+  | { readonly type: 'delta'; readonly event: CaptureEvent };
 
 /** Dependencies for {@link PanelBroadcaster}. */
 export interface PanelBroadcasterDeps {
@@ -26,7 +26,7 @@ export interface PanelBroadcasterDeps {
  */
 export class PanelBroadcaster {
   readonly #deps: PanelBroadcasterDeps;
-  readonly #buffer: PipelineEvent[] = [];
+  readonly #buffer: CaptureEvent[] = [];
   #open = false;
 
   constructor(deps: PanelBroadcasterDeps) {
@@ -44,7 +44,7 @@ export class PanelBroadcaster {
   }
 
   /** Forwards a delta when open; buffers it otherwise. */
-  push(event: PipelineEvent): void {
+  push(event: CaptureEvent): void {
     if (this.#open) {
       this.#deps.send({ type: 'delta', event });
     } else {

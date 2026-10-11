@@ -4,13 +4,16 @@ import type { ProtocolError } from './errors';
 import {
   ALL_MESSAGE_TYPES,
   COMMAND_MESSAGE_TYPES,
+  COMMAND_RESPONSE_MESSAGE_TYPES,
   EVENT_MESSAGE_TYPES,
   RESULT_MESSAGE_TYPES,
   commandMessageSchema,
+  commandResponseSchema,
   eventMessageSchema,
   protocolMessageSchema,
   resultMessageSchema,
   type CommandMessage,
+  type CommandResponse,
   type EventMessage,
   type ProtocolMessage,
   type ResultMessage,
@@ -90,4 +93,13 @@ export function parseCommand(input: unknown): Result<CommandMessage, ProtocolErr
 /** Parses a command result message. Never throws. */
 export function parseResult(input: unknown): Result<ResultMessage, ProtocolError> {
   return parseEnvelope(resultMessageSchema, RESULT_MESSAGE_TYPES, input);
+}
+
+/**
+ * Parses a command reply: a typed result or the `error` message. Both the
+ * service worker (writing) and the content script (reading) use this, so the
+ * reply envelope has a single definition (integration gap G8).
+ */
+export function parseCommandResponse(input: unknown): Result<CommandResponse, ProtocolError> {
+  return parseEnvelope(commandResponseSchema, COMMAND_RESPONSE_MESSAGE_TYPES, input);
 }

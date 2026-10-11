@@ -5,6 +5,7 @@ import {
   runInsights,
   toMillis,
   toTabId,
+  type CaptureEvent,
   type ConsoleEntry,
   type Finding,
   type HealthScore,
@@ -14,7 +15,6 @@ import {
   type StorageSummary,
   type VitalMetric,
 } from '../../core';
-import type { ProtocolMessage } from '../../protocol';
 
 /** The widget's connection to the page/capture backend. */
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -34,7 +34,7 @@ export interface OverviewStore {
   readonly networkCount: Signal<number>;
   readonly isEmpty: Signal<boolean>;
   applySnapshot(snapshot: PageSnapshot): void;
-  applyEvent(message: ProtocolMessage): void;
+  applyEvent(event: CaptureEvent): void;
   setConnection(status: ConnectionStatus): void;
 }
 
@@ -107,42 +107,29 @@ export function createOverviewStore(): OverviewStore {
     storage.value = incoming.storage;
   };
 
-  const applyEvent = (message: ProtocolMessage): void => {
-    switch (message.type) {
-      case 'event.console': {
-        if (Number(message.payload.timestamp) < snapshotAt.value) {
+  const applyEvent = (event: CaptureEvent): void => {
+    switch (event.channel) {
+      case 'console': {
+        if (Number(event.entry.timestamp) < snapshotAt.value) {
           return; // Older than the snapshot we already applied.
         }
-        consoleMap.value = insertBounded(
-          consoleMap.value,
-          message.payload as ConsoleEntry,
-          CONSOLE_CAP,
-        );
+        consoleMap.value = insertBounded(consoleMap.value, event.entry, CONSOLE_CAP);
         return;
       }
-      case 'event.network':
-        networkMap.value = insertBounded(
-          networkMap.value,
-          message.payload as NetworkEntry,
-          NETWORK_CAP,
-        );
+      case 'network':
+        networkMap.value = insertBounded(networkMap.value, event.entry, NETWORK_CAP);
         return;
-      case 'event.performance': {
+      case 'performance': {
         const merged = new Map(vitals.value.map((metric) => [metric.name, metric]));
-        for (const metric of message.payload.vitals) {
-          merged.set(metric.name, metric as VitalMetric);
+        for (const metric of event.vitals) {
+          merged.set(metric.name, metric);
         }
         vitals.value = [...merged.values()];
-        longTasks.value = [
-          ...longTasks.value,
-          ...(message.payload.longTasks as readonly LongTask[]),
-        ];
+        longTasks.value = [...longTasks.value, ...event.longTasks];
         return;
       }
-      case 'event.storage':
-        storage.value = message.payload;
-        return;
-      default:
+      case 'storage':
+        storage.value = event.summary;
         return;
     }
   };

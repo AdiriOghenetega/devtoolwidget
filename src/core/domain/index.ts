@@ -1,4 +1,5 @@
 export * from './brands';
+export * from './capture-event';
 export * from './console';
 export * from './constants';
 export * from './finding';

@@ -8,6 +8,8 @@ export const BRIDGE_CHANNEL = 'devtoolwidget:bridge';
 export const HANDSHAKE_MESSAGE = 'handshake';
 /** Agent acknowledgement sent back over the freshly adopted port. */
 export const BRIDGE_ACK_MESSAGE = 'ack';
+/** Content acknowledgement that commits the agent to the adopted port. */
+export const BRIDGE_COMMIT_MESSAGE = 'commit';
 /** Nonce size in bytes. */
 export const DEFAULT_NONCE_BYTES = 16;
 
@@ -25,6 +27,13 @@ export interface AckMessage {
   readonly nonce: string;
 }
 
+/** The content script's commit, confirming it received the ack on this port. */
+export interface CommitMessage {
+  readonly channel: typeof BRIDGE_CHANNEL;
+  readonly message: typeof BRIDGE_COMMIT_MESSAGE;
+  readonly nonce: string;
+}
+
 const handshakeSchema = z.object({
   channel: z.literal(BRIDGE_CHANNEL),
   message: z.literal(HANDSHAKE_MESSAGE),
@@ -34,6 +43,12 @@ const handshakeSchema = z.object({
 const ackSchema = z.object({
   channel: z.literal(BRIDGE_CHANNEL),
   message: z.literal(BRIDGE_ACK_MESSAGE),
+  nonce: z.string().min(1),
+});
+
+const commitSchema = z.object({
+  channel: z.literal(BRIDGE_CHANNEL),
+  message: z.literal(BRIDGE_COMMIT_MESSAGE),
   nonce: z.string().min(1),
 });
 
@@ -51,6 +66,14 @@ export function parseAck(data: unknown): Result<AckMessage, PlatformError> {
   return parsed.success ? ok(parsed.data) : err(platformError('invalid-data', 'Not a bridge ack'));
 }
 
+/** Validates untrusted port data as a commit. Never throws. */
+export function parseCommit(data: unknown): Result<CommitMessage, PlatformError> {
+  const parsed = commitSchema.safeParse(data);
+  return parsed.success
+    ? ok(parsed.data)
+    : err(platformError('invalid-data', 'Not a bridge commit'));
+}
+
 /** Builds a handshake message for the given nonce. */
 export function createHandshake(nonce: string): HandshakeMessage {
   return { channel: BRIDGE_CHANNEL, message: HANDSHAKE_MESSAGE, nonce };
@@ -59,6 +82,11 @@ export function createHandshake(nonce: string): HandshakeMessage {
 /** Builds an acknowledgement message for the given nonce. */
 export function createAck(nonce: string): AckMessage {
   return { channel: BRIDGE_CHANNEL, message: BRIDGE_ACK_MESSAGE, nonce };
+}
+
+/** Builds a commit message for the given nonce. */
+export function createCommit(nonce: string): CommitMessage {
+  return { channel: BRIDGE_CHANNEL, message: BRIDGE_COMMIT_MESSAGE, nonce };
 }
 
 /** Generates a nonce from injected randomness (hex, `bytes` bytes). */
