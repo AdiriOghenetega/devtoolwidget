@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "devtoolwidget noop content baseline",
+  "version": "0.0.0",
+  "description": "Diagnosis-only baseline: a no-op document_start content script used to measure the fixed cost of injecting any content script.",
+  "content_scripts": [
+    {
+      "matches": ["http://127.0.0.1/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}

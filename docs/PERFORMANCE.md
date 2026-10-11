@@ -88,45 +88,133 @@ active 208.0 ms, overhead 94.6 ms) sits inside the same band.
 
 ## Ablation: which component carries the overhead
 
-Second test in the same spec: series **none**, **agent-only**, **content-only**
-(the shipped content bundle) and **all**, N=20 each, same CDP `TaskDuration` method.
-After the lazy-mount PR, "content-only" loads the whole content bundle but does **not**
-run the UI: the Preact render is deferred to the first interaction. The bundle is not
-split (WXT inlines content-script dynamic imports), so the deferred code is still
-parsed/compiled; only its execution is skipped.
+Second test in the same spec. Series **none**, **agent-only**, **content-only** and
+**all** run in the extension context (N=20 each, same CDP `TaskDuration` method).
+`content-only` loads the whole production content bundle but does **not** run the UI
+(deferred to first interaction, ADR 0019); WXT inlines the dynamic import, so the
+deferred code is still parsed. This PR adds two matched baselines: **bare** (a
+persistent Chromium with no extension) and **noop-content** (a minimal no-op
+`document_start` content script in its own extension,
+`tests/benchmarks/noop-extension`). `noop-content − bare` is the **fixed cost of
+injecting any content script**; `content-only − noop-content` is the share
+attributable to **our** bundle.
 
-**Result (platform `win32`, n=20, metric `TaskDuration`, delta against the same run's
-`none`):**
+**Result (platform `win32`, n=20, metric `TaskDuration`):**
 
-| series       | before: median | before Δ | after run A | after Δ A | after run B | after Δ B | after run C | after Δ C |
-| ------------ | -------------- | -------- | ----------- | --------- | ----------- | --------- | ----------- | --------- |
-| none         | 110.2 ms       | —        | 113.7 ms    | —         | 111.4 ms    | —         | 115.7 ms    | —         |
-| agent-only   | 117.6 ms       | +7.4 ms  | 117.0 ms    | +3.3 ms   | 115.6 ms    | +4.2 ms   | 120.3 ms    | +4.6 ms   |
-| content-only | 187.5 ms       | +77.3 ms | 195.6 ms    | +81.9 ms  | 191.7 ms    | +80.3 ms  | 204.0 ms    | +88.3 ms  |
-| all          | 200.5 ms       | +90.3 ms | 206.3 ms    | +92.6 ms  | 218.7 ms    | +107.3 ms | 213.3 ms    | +97.6 ms  |
+| series       | run 1    | run 2    | run 3    |
+| ------------ | -------- | -------- | -------- |
+| none         | 127.5 ms | 129.3 ms | 124.8 ms |
+| agent-only   | 120.2 ms | 128.4 ms | 125.0 ms |
+| content-only | 200.8 ms | 222.0 ms | 219.7 ms |
+| all          | 212.9 ms | 225.8 ms | 243.8 ms |
+| bare         | 120.8 ms | 121.0 ms | 124.5 ms |
+| noop-content | 122.2 ms | 123.8 ms | 124.5 ms |
 
-**How much of the ~77 ms was recovered by deferring execution alone: essentially
-none.** "content-only" overhead is +77 ms before and +80–88 ms after (three runs) —
-unchanged to slightly **worse**, within the run-to-run spread, because the bundle grew
-~2 kB gz and the deferred code is still parsed. The main-world agent stays cheap
-(~4–7 ms).
+| derived                           | run 1        | run 2        | run 3        |
+| --------------------------------- | ------------ | ------------ | ------------ |
+| **fixed injection** (`noop−bare`) | **+1.4 ms**  | **+2.8 ms**  | **+0.0 ms**  |
+| **our bundle** (`content−noop`)   | **+78.6 ms** | **+98.2 ms** | **+95.2 ms** |
+| agent (`agent-only−none`)         | −7.3 ms      | −1.0 ms      | +0.2 ms      |
 
-**What remains, and where it comes from.** The content-script cost is **not** the UI
-render. It is loading, parsing and executing the one content bundle plus the mandatory
-`document_start` work: the bridge handshake, the `command.ping` round trip, the panel
-port connect, and the **Zod** validation of every cross-context message. Deferring the
-Preact render removed almost nothing, and the bundle even grew slightly
-(57.8 → 60.03 kB gz) from the bootstrap/launcher/feed additions, so the deferred UI
-code is still parsed although it is never run. Two changes can move this number, both
-logged in `docs/INTEGRATION-GAPS.md` and both **out of scope here**: **G14** – a real
-ESM lazy chunk (WXT manual split); **G15** – removing Zod from the `document_start`
-path so the content script relays batches with cheap size/shape checks and the service
-worker stays the validating boundary.
+**Finding: the fixed injection cost is ~0–3 ms; essentially all of the content-script
+overhead is our bundle (~79–98 ms).** Injecting a content script at `document_start`
+is nearly free, so the ~78 ms is the cost of loading/parsing/executing _our_ 60 kB gz
+bundle and its `document_start` work, not the injection mechanism. The main-world
+agent is within noise (~0–7 ms).
 
-**Correction to the earlier finding.** The previous version of this section said the
-entrypoint "mounts the UI eagerly" and implied the UI mount caused the ~77 ms. The
-measurement shows the mount was not the cost: "content-only" conflated the bridge
-(and Zod routing) with the UI. Deferring the UI confirms the bridge/routing dominates.
+**Deferring the UI (lazy-mount PR) recovered essentially none of it.** Historical
+before/after (n=20): `content-only` Δ vs `none` was **+77.3 ms before** and
+**+80.3 / +81.9 / +88.3 ms after** three runs — unchanged to slightly worse, because
+the deferred UI code is still parsed. The bundle even grew 57.8 → 60.03 kB gz from the
+bootstrap/launcher/feed additions. So the cost is **the bundle itself plus the
+mandatory `document_start` work** (bridge handshake, `command.ping`, port connect,
+Zod validation), not the Preact render.
+
+**Correction to a still-earlier finding.** An earlier version of this section claimed
+the entrypoint "mounts the UI eagerly" and implied the UI mount caused the ~77 ms.
+The measurements show the mount was not the cost.
+
+## Diagnosis: fixed injection cost, bundle composition and CPU profile (2026-10-11)
+
+Diagnosis only (docs, benchmark and tooling — no production change). Three
+measurements narrow where the ~78 ms content-script overhead lives.
+
+### (a) Fixed injection cost vs our bundle
+
+From the ablation above: injecting _any_ `document_start` content script costs
+**~0–3 ms** (`noop-content − bare`, three runs), so the injection mechanism is not the
+problem. Our content bundle adds **~79–98 ms** (`content-only − noop-content`). The
+work is in _our_ bundle: its size (parse/compile) and its `document_start` execution.
+
+### (b) Bundle composition of `content-scripts/content.js`
+
+`node tests/benchmarks/bundle-composition.mjs` (builds with `ANALYZE=1`; the
+`moduleSizeReport` Vite plugin in `tools/vite-module-sizes.mjs` reports exact
+post-tree-shake rendered sizes per module, whereas the treemap analyzer reports
+pre-tree-shake sizes and overstates the bundle). Bundle: **193,826 B raw / 60,103 B
+gzipped**; rendered module total (sums to the chunk): 367,656 B.
+
+| family    | rendered B | share | est. gz B |
+| --------- | ---------- | ----- | --------- |
+| zod       | 177,666    | 48.3% | ~29,000   |
+| ui        | 53,724     | 14.6% | ~8,800    |
+| core      | 41,274     | 11.2% | ~6,700    |
+| preact    | 32,244     | 8.8%  | ~5,300    |
+| other     | 25,856     | 7.0%  | ~4,200    |
+| protocol  | 14,837     | 4.0%  | ~2,400    |
+| bootstrap | 12,123     | 3.3%  | ~2,000    |
+| capture   | 6,010      | 1.6%  | ~1,000    |
+| platform  | 3,922      | 1.1%  | ~600      |
+
+"est. gz B" = family share × the measured bundle gzip size (ratio 0.310); per-family
+gzip is not measured directly. **Zod is the single largest family at ~48% of the
+rendered bundle**; `ui + preact` are ~23% together; `core` is ~11% because the content
+entry imports the `core` barrel.
+
+### (c) CPU profile of the content-only series
+
+`node tests/benchmarks/profile-content.mjs` builds an unminified, source-mapped bundle
+(`PROFILE=1` → `.output-profile/`) so V8 reports readable function names, then profiles
+3 loads with the CDP `Profiler` domain, restricted to `content.js` frames.
+
+- content.js **self time ≈ 26 ms/load**.
+- **module evaluation (top-level inclusive) ≈ 21 ms/load — 82% of content.js self
+  time.** Module evaluation is the dominant JS phase.
+- **Zod/schema-shaped self time ≈ 5.1 ms/load — ~20% of content.js self time, ~24% of
+  module evaluation.** The top frames are Zod internals (`init`, `members`,
+  `defineBound`, `mergeDefs`, `$constructor.~standard`, `runChecks`, `inst._zod.parse`),
+  i.e. **schema construction at import is a real but modest share of JS execution**.
+
+**Interpretation.** In the unminified build the JS execution is ~26 ms, of which module
+evaluation is ~21 ms and Zod construction ~5 ms; the remainder (`hostWidgetRoot`,
+`createLauncher`, `resolveBindings`, module wrappers) is our bootstrap. The
+`TaskDuration` delta (~78 ms, minified, n=20) is larger than the JS self time, so a
+significant share is **script parse/compile plus native/IPC work** (port connect,
+storage read, `sendMessage`) that the JS profiler does not report as self time. Zod's
+48% of the _bundle_ buys both its ~5 ms of construction **and** a large share of the
+parse/compile cost (unminified names are not representative of absolute time).
+
+### (d) Ranked candidate fixes (evidence-based estimates; not implemented)
+
+Estimates are `family share × the ~78 ms content-only delta`, which is crude (shares are
+pre-minify rendered bytes; parse/compile scales with bytes, execution does not). Treat
+them as a ranking, not promises. "Cheap" = no validation-model change.
+
+| rank | candidate                                                                                                                                                    | est. gain                                           | cost                                         |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | -------------------------------------------- |
+| 1    | **Relay-only content script with no Zod (G15)** — forward `event.batch` to the worker with cheap size/shape checks; the worker stays the validating boundary | up to ~35 ms (zod ≈ 48% of bundle)                  | **not cheap — changes the validation model** |
+| 2    | **Real ESM lazy chunk for the UI (G14)** — take `ui + preact` out of the `document_start` bundle (WXT manual split)                                          | ~15–18 ms (ui+preact ≈ 23%)                         | cheap (build tooling)                        |
+| 3    | **Narrow the `core` import** — the content entry imports the `core` barrel; import `ids` / `commands` / `placement` directly instead                         | ~8 ms (core ≈ 11%)                                  | cheap                                        |
+| 4    | **Narrow protocol/barrel imports + lazy schema construction** — build only the schemas the bootstrap uses, on first use rather than at import                | ~2–4 ms (protocol ≈ 4%; zod construction ≈ 5 ms JS) | cheap                                        |
+| 5    | `other` (≈ 7%) — WXT/browser glue and the rolldown runtime; not directly addressable                                                                         | ~0                                                  | —                                            |
+
+Candidates 2 and 3 are additive and validation-model-neutral: together ~23–26 ms for
+build/import cleanup, moving the content-only delta from ~78 ms toward ~55 ms without
+touching the trust boundary. Candidate 1 is the largest single lever but re-opens the
+ADR 0018 trade-off for the content path.
+
+**Not implemented here** (diagnosis only). G14/G15 remain the tracked gaps in
+`docs/INTEGRATION-GAPS.md`.
 
 ## Memory under an event flood
 
@@ -164,8 +252,12 @@ plan below measures each change against it.
 ## Plan to close the ~45 ms gap (95 ms → ≤ 50 ms)
 
 The baseline is now measured with the CDP method above; optimisation starts from
-this number. Ordered, cheapest first, each measured before/after (medians and IQRs,
-n=30) with the same spec:
+this number. The **Diagnosis** section above re-prioritises the content-script work:
+the fixed injection cost is **~2 ms**, so the levers are our bundle's size and its
+`document_start` work, ranked in (d) — **G14** (real ESM lazy chunk, cheap),
+**narrowing the `core` barrel** (cheap), and **G15** (relay-only, Zod-free) as the
+largest lever that changes the validation model. Ordered, cheapest first, each
+measured before/after (medians and IQRs, n=30) with the same spec:
 
 1. **`redactUrl` fast path** (skip `new URL` when there is no query/userinfo) and a
    `redactString` fast path (skip the two regexes when the string has no `e`/`B`).
