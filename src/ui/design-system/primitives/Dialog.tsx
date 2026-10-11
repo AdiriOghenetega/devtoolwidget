@@ -10,12 +10,20 @@ export interface DialogProps {
   readonly title?: string;
   readonly children?: ComponentChildren;
   readonly onClose?: () => void;
+  /** Handler for the confirm button; defaults to {@link onClose}. */
+  readonly onConfirm?: () => void;
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /** A modal dialog with a focus trap, Escape-to-close and focus restoration. */
-export function Dialog({ open, title, children, onClose }: DialogProps): JSX.Element | null {
+export function Dialog({
+  open,
+  title,
+  children,
+  onClose,
+  onConfirm,
+}: DialogProps): JSX.Element | null {
   const ref = useRef<HTMLDivElement | null>(null);
   const restoreTo = useRef<Element | null>(null);
 
@@ -79,7 +87,12 @@ export function Dialog({ open, title, children, onClose }: DialogProps): JSX.Ele
         <div class="dwt-dialog__body">{children}</div>
         <div class="dwt-dialog__actions">
           <Button onClick={() => onClose?.()}>{t('dialog.cancel')}</Button>
-          <Button variant="primary" onClick={() => onClose?.()}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              (onConfirm ?? onClose)?.();
+            }}
+          >
             {t('dialog.confirm')}
           </Button>
           <IconButton ariaLabel={t('common.close')} onClick={() => onClose?.()}>
