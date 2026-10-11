@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { installAgentBridge, type AgentWindow } from '../../src/capture/bridge/agent-bridge';
 import { connectAgentBridge, type ContentWindow } from '../../src/capture/bridge/content-bridge';
+import { createCommit, createHandshake } from '../../src/capture/bridge/handshake';
 import { createCommandRouter } from '../../src/capture/session/command-router';
 import { TabSessionRegistry } from '../../src/capture/session/session-registry';
 import { createIdFactory, toTabId } from '../../src/core';
 import { createFakePorts } from '../../src/platform/fakes';
 import { PROTOCOL_VERSION } from '../../src/protocol';
+
+/** Lets a delivered `MessageChannel` message be processed (port delivery is async). */
+function flush(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
 
 /**
  * A deterministic window that models capture-before-bubble dispatch and port
@@ -81,6 +89,7 @@ describe('agent bridge handshake and ping', () => {
     if (!connection.ok) {
       return;
     }
+    await flush();
     expect(agent.connected).toBe(true);
     expect(connection.value.nonce).toBe(agent.nonce);
 
@@ -115,6 +124,28 @@ describe('agent bridge handshake and ping', () => {
     }
 
     connection.value.dispose();
+    agent.dispose();
+  });
+
+  it('re-adopts the current handshake when an earlier attempt is abandoned (G7)', async () => {
+    const window = new TestWindow();
+    const agent = installAgentBridge({ target: window });
+
+    // First attempt: the content script gives up before committing and closes
+    // its branch (this is what a too-short retry window does at document_start).
+    const first = new MessageChannel();
+    window.postMessage(createHandshake('nonce-1'), '*', [first.port2]);
+    await flush();
+    first.port1.close();
+
+    // Second attempt: a fresh channel the content script is still waiting on.
+    const second = new MessageChannel();
+    window.postMessage(createHandshake('nonce-2'), '*', [second.port2]);
+    second.port1.postMessage(createCommit('nonce-2'));
+    await flush();
+
+    expect(agent.connected).toBe(true);
+    expect(agent.nonce).toBe('nonce-2');
     agent.dispose();
   });
 
