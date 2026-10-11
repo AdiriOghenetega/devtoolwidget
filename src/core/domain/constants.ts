@@ -12,6 +12,13 @@ export const MAX_SNAPSHOTS = 20;
 /** Event batching interval for the capture pipeline (PRD section 7). */
 export const EVENT_BATCH_INTERVAL: Millis = toMillis(100);
 
+/**
+ * Maximum number of capture events in one `event.batch` (PRD section 7, FR-3).
+ * Also the capture pipeline's default buffer cap, so a full buffer always fits in
+ * a single batch; a batch above this is rejected at the trust boundary.
+ */
+export const MAX_BATCH_EVENTS = 1000;
+
 /** Memory budget for all capture buffers (PRD section 7). */
 export const MEMORY_BUDGET: Bytes = toBytes(50 * MIB);
 
