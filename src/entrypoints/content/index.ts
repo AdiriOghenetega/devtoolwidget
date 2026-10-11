@@ -8,6 +8,7 @@ import { createStoragePort, type BrowserApi } from '../../platform/chrome';
 import {
   PROTOCOL_VERSION,
   parseCommandResponse,
+  parseMessage,
   parsePanelMessage,
   type CommandInput,
 } from '../../protocol';
@@ -139,6 +140,7 @@ export default defineContentScript({
       createId,
       createChannel: () => new MessageChannel(),
       createRandom: () => Math.random(),
+      parseMessage,
     })
       .then(async (connection) => {
         if (!connection.ok) {

@@ -23,8 +23,9 @@ Everything below is a wiring task; no new domain logic is implied.
 | G8  | Command reply envelope                | **Resolved** (Slice A, ADR 0013)                                                                                                                                                           |
 | G9  | Disable-cache DNR rule shape          | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                                                                     |
 | G10 | setThrottle application               | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                                                                   |
-| G11 | Agent bundle over PRD budget          | Open: `agent.js` is 39.43 kB gzipped against the PRD 15 kB budget (bundles Zod + core validation)                                                                                          |
+| G11 | Agent bundle over PRD budget          | **Resolved** (ADR 0018): `agent.js` is 12.6 kB gz, enforced by `pnpm size`                                                                                                                 |
 | G12 | Optional host permission + options UI | Open: the manifest requires `<all_urls>` host access, so `grant` is `already-granted` and `revoke` cannot remove a required permission; no gesture-capable options page exists to drive it |
+| G13 | Agent runtime configuration           | Open: the agent is built with default capture options; per-origin capture level, body capture, redaction rules and the FR-7 latency simulation never reach it                              |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -224,6 +225,19 @@ port's `NetworkRuleAction` has no header fields, so the fix is to extend it
 (request/response header operations) and have `planDisableCache` emit e.g.
 `Cache-Control: no-store` on the request. Blocks FR-7.
 
+## G13 — The agent receives no runtime configuration (OPEN)
+
+The agent no longer answers commands over the port (ADR 0018), and it was never
+given per-origin configuration: `CaptureAgent` is constructed with default
+`capture` options, no `redactHeaders`/`redactString` overrides and no
+`artificialDelayMs`. So the per-origin capture level, body-capture flag, user
+redaction rules (PRD FR-11) and the FR-7 latency simulation do not reach it.
+
+Closing this needs a **validated** agent-config path: either a bootstrap
+`agent.config` message validated with a hand-written guard (plus a case in the
+equivalence test, since the agent must stay Zod-free) or a post-construction
+setter invoked from a guarded message. Recorded here rather than left silent.
+
 ## G10 — setThrottle resolves but does not apply (OPEN)
 
 Slice C wired `setThrottle` to resolve the profile and echo it, but nothing is
@@ -231,12 +245,14 @@ applied: the soft path needs the agent's `NetworkCollector` to take an
 `artificialDelayMs`, and reaching it means relaying the command SW→content→agent
 over the bridge — the remaining action hop. Blocks FR-7 and FR-12.
 
-## G11 — The agent bundle exceeds the PRD size budget (OPEN)
+## G11 — The agent bundle exceeded the PRD size budget (RESOLVED, ADR 0018)
 
-`agent.js` is **39.43 kB gzipped** against the PRD §4 budget of **15 kB** (the UI
-budget, 120 kB, is met by the content bundle at 58.2 kB). The agent bundles Zod and
-the core validation path, which the injected main-world script does not strictly
-need end to end. `.size-limit.mjs` documents this and deliberately omits an agent
-entry while it fails (adding it would red the pipeline without a fix; see ADR
-0016). The intended fix is to validate only at the trust boundary that needs it or
-use a lighter schema in the agent, then add the entry to enforce the budget.
+Resolved: `agent.js` measures **12.6 kB gzipped** against the PRD §4 budget of 15 kB.
+Zod was removed from the agent's reachable graph — hand-written guards for the three
+bootstrap messages (with a permanent equivalence test against the source-of-truth
+schemas), no runtime Zod in `capture/bridge` or `core` (the settings schemas moved to
+`protocol/settings.ts`, the test-only `harSchema` moved out of `core`, and a Zod-free
+`platform/chrome/clock.ts` was split out). `.size-limit.mjs` now enforces the 15 kB
+agent budget and a dependency-cruiser rule bans runtime imports of Zod-backed
+protocol modules from the agent path. See ADR 0018. (The remaining agent issue is
+G13: runtime configuration.)

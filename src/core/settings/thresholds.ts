@@ -1,6 +1,6 @@
-import { toBytes, toMillis } from '../domain/brands';
+﻿import { toBytes, toMillis } from '../domain/brands';
 import { DEFAULT_THRESHOLDS, type MetricThreshold, type Thresholds } from '../domain/constants';
-import type { Settings, ThresholdOverrides } from './schema';
+import type { Settings, ThresholdOverrides } from './types';
 
 function mergeMetric(
   base: MetricThreshold,

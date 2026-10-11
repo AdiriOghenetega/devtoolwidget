@@ -117,6 +117,12 @@ If a requirement is ambiguous, contradictory, or the PRD does not cover the case
 
 - Zod is required **at every trust boundary**: messages, storage reads/writes, imports,
   and all data arriving from the main world (which is untrusted — see PRD §7 security).
+- The one exception is the page-world agent's three bridge bootstrap messages
+  (`handshake`, `ack`, `commit`): the injected agent must stay under its 15 kB bundle
+  budget, so it validates them with small hand-written guards instead. The Zod schemas
+  in `protocol/bridge.ts` remain the source of truth, the guards are typed against their
+  `z.infer` types, and a permanent equivalence test asserts the two always agree
+  (ADR 0018). Nothing else is exempt.
 - Every cross-context message carries a type, a schema version, a correlation ID and a
   Zod schema. Validate on receipt and before use; never consume unvalidated input.
 - Parse, do not cast. Do not add an unchecked cast to silence a validation mismatch;

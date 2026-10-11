@@ -5,6 +5,7 @@
  * `Result` helpers and the pure utilities (buffers, redaction, serialization,
  * formatting and id generation).
  */
+export * from './bridge-protocol';
 export * from './buffers/ring-buffer';
 export * from './clear';
 export * from './commands';

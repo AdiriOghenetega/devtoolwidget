@@ -1,4 +1,3 @@
-import { PROTOCOL_VERSION, parseCommand, type CommandMessage } from '../../protocol';
 import { createAck, parseCommit, parseHandshake } from './handshake';
 
 /** Minimal port surface the agent needs (structurally satisfied by MessagePort). */
@@ -44,31 +43,13 @@ export interface AgentBridge {
   dispose(): void;
 }
 
-function replyTo(port: AgentPort, command: CommandMessage): void {
-  if (command.type === 'command.ping') {
-    port.postMessage({
-      type: 'result.ping',
-      version: PROTOCOL_VERSION,
-      correlationId: command.correlationId,
-      payload: { pong: true },
-    });
-    return;
-  }
-  port.postMessage({
-    type: 'error',
-    version: PROTOCOL_VERSION,
-    correlationId: command.correlationId,
-    payload: { code: 'unsupported', message: `Agent cannot handle "${command.type}"` },
-  });
-}
-
 /**
  * Installs the main-world agent bridge (PRD section 7). It registers a
  * **capturing** message listener immediately and adopts each valid handshake it
  * sees, suppressing the event with `stopImmediatePropagation` so page listeners
- * never observe the port transfer, and answering commands arriving on the
- * adopted port. Everything from the page is treated as untrusted and validated
- * with the protocol schemas.
+ * never observe the port transfer. Everything from the page is treated as
+ * untrusted and validated; the three bootstrap messages use the hand-written
+ * guards in `handshake.ts` (ADR 0018) so the agent stays under its bundle budget.
  *
  * Adoption is **tentative** until the content script sends a `commit` on the
  * port. The content script abandons a handshake attempt after its retry window,
@@ -117,11 +98,6 @@ export function installAgentBridge(options: AgentBridgeOptions): AgentBridge {
           handler();
         }
         connectHandlers.clear();
-        return;
-      }
-      const command = parseCommand(messageEvent.data);
-      if (command.ok) {
-        replyTo(candidate, command.value);
       }
     };
     candidate.postMessage(createAck(expected));

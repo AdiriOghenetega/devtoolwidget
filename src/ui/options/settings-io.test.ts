@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION, migrateSettings } from '../../core';
+﻿import { describe, expect, it } from 'vitest';
+import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '../../core';
+import { migrateSettings } from '../../protocol';
 import { exportSettings, importSettings } from './settings-io';
 
 describe('settings export/import', () => {

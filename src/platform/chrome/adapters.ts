@@ -1,9 +1,8 @@
 import { z } from 'zod';
-import { err, ok, toMillis, toTabId, type Result, type TabId } from '../../core';
+import { err, ok, toTabId, type Result, type TabId } from '../../core';
 import { platformError, type PlatformError } from '../ports/errors';
 import type {
   BrowsingDataPort,
-  ClockPort,
   CommandsPort,
   CommandInfo,
   DebuggerPort,
@@ -33,16 +32,12 @@ async function attempt<T>(operation: () => Promise<T> | T): Promise<Result<T, Pl
 
 // --- Clock ------------------------------------------------------------------
 
-/** Real clock backed by `Date.now` and `setTimeout`. */
-export function createClockPort(): ClockPort {
-  return {
-    now: () => toMillis(Date.now()),
-    delay: (milliseconds) =>
-      new Promise<void>((resolve) => {
-        globalThis.setTimeout(resolve, milliseconds);
-      }),
-  };
-}
+// --- Clock ------------------------------------------------------------------
+
+// `createClockPort` moved to `./clock` so the agent can import it without Zod.
+import { createClockPort } from './clock';
+
+export { createClockPort };
 
 // --- Storage ----------------------------------------------------------------
 
