@@ -62,7 +62,9 @@ describe('diffMetrics', () => {
           expect(forward.map((delta) => delta.name)).toEqual(backward.map((delta) => delta.name));
           forward.forEach((delta, index) => {
             const other = backward[index];
-            expect(other?.delta).toBe(-delta.delta);
+            // Normalise signed zero: 0 and -0 are equal here, but Object.is
+            // (used by toBe) distinguishes them.
+            expect((other?.delta ?? 0) + 0).toBe(-delta.delta + 0);
             if (delta.direction === 'up') {
               expect(other?.direction).toBe('down');
             } else if (delta.direction === 'down') {

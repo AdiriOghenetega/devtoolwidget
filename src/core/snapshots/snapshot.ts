@@ -96,10 +96,15 @@ export function createSnapshot(input: {
   };
 }
 
+function readMetric(map: Readonly<Record<string, number>>, name: string): number {
+  return Object.prototype.hasOwnProperty.call(map, name) ? (map[name] ?? 0) : 0;
+}
+
 /**
  * Diffs two metric maps. Pure and antisymmetric: `diff(before, after)` and
  * `diff(after, before)` report the same names with negated deltas and flipped
- * directions; a map diffed with itself has no changes.
+ * directions; a map diffed with itself has no changes. Reads metric values via
+ * own-property access, so inherited keys like `__proto__` are ignored.
  */
 export function diffMetrics(
   before: Readonly<Record<string, number>>,
@@ -107,8 +112,8 @@ export function diffMetrics(
 ): readonly MetricDelta[] {
   const names = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
   return names.map((name) => {
-    const beforeValue = before[name] ?? 0;
-    const afterValue = after[name] ?? 0;
+    const beforeValue = readMetric(before, name);
+    const afterValue = readMetric(after, name);
     const delta = afterValue - beforeValue;
     const threshold = thresholdFor(name);
     return {
