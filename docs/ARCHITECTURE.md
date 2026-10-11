@@ -68,9 +68,12 @@ and the tab-port forwarding.
 
 1. Router + background wiring for `hardReload`, `setThrottle`, `toggleDisableCache`
    (controller exists; also feed soft-mode `softDelayMs` into the network collector's
-   `artificialDelayMs`).
+   `artificialDelayMs`). Slice C wired the handlers; the soft delay application and
+   the real disable-cache rule still need the port extensions in gaps G9/G10.
 2. Concrete page/background `StepExecutor`s for `ClearOrchestrator` (scripting +
-   browsingData ports) and a `StorageSummary` command handler.
+   browsingData ports) and a `StorageSummary` command handler. Slice C added the
+   executors (`capture/storage/step-executors.ts`); a `StorageSummary` command
+   remains open (Slice D/E).
 3. Wire `TabNetworkController.cleanup`/`sync` to `tabs.onRemoved`/`onStartup`.
 4. ~~Agent-side capture wiring (console/network/performance collectors emit over the
    bridge)~~ Done in Slice A (`capture/agent`, ADR 0013). The remaining action relay
