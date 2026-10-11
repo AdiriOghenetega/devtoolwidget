@@ -2,6 +2,7 @@ export * from './HealthBadge';
 export * from './Launcher';
 export * from './Panel';
 export * from './Shell';
+export * from './ShortcutCheatSheet';
 export * from './geometry';
 export * from './mode';
 export * from './persistence';
