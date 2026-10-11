@@ -52,11 +52,15 @@ stay clean otherwise.
 - The bridge no longer answers commands over its port. That capability was unused and
   is what let the agent drop the protocol command schemas; the content-side request
   API is kept for a future revision that brings its own validated path.
-- **Gap G13:** per-origin capture level, body-capture and redaction rules, and the
-  FR-7 latency simulation do not reach the agent at all — they are construction
-  options it is never given. Closing this needs a validated agent-config message with
-  a hand-written guard (plus an equivalence case) or a post-construction setter; it is
-  recorded in `docs/INTEGRATION-GAPS.md`, not left silent.
+- **G13 (resolved).** The agent is configured at runtime by a fourth Zod-free
+  bootstrap message, `agent.config` (capture level, per-origin body capture, user
+  redaction rules, latency), validated by the table-driven guard in
+  `capture/bridge/validate.ts`. The worker derives it from settings and pushes it on
+  the panel port; the content script forwards it over the committed bridge port. A
+  real-browser Playwright test asserts the effect without a page reload.
+- **Wire-schema fix.** `networkEntrySchema` omitted `bodyPreview`, `meta` and
+  `startedAt`, so the service worker stripped them; the schema now matches core
+  `NetworkEntry`/`NetworkMeta`.
 - AGENTS.md §6 now states the exception and the reachability/direct-ban rule.
 
 ## Residual risks

@@ -25,7 +25,7 @@ Everything below is a wiring task; no new domain logic is implied.
 | G10 | setThrottle application               | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                                                                   |
 | G11 | Agent bundle over PRD budget          | **Resolved** (ADR 0018): `agent.js` is 12.6 kB gz, enforced by `pnpm size`                                                                                                                 |
 | G12 | Optional host permission + options UI | Open: the manifest requires `<all_urls>` host access, so `grant` is `already-granted` and `revoke` cannot remove a required permission; no gesture-capable options page exists to drive it |
-| G13 | Agent runtime configuration           | Open: the agent is built with default capture options; per-origin capture level, body capture, redaction rules and the FR-7 latency simulation never reach it                              |
+| G13 | Agent runtime configuration           | **Resolved** (ADR 0018 amendment): the worker derives it from settings and relays it over the panel port to the agent's guarded `agent.config`; proven by `specs/agent-config.spec.ts`     |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -225,7 +225,19 @@ port's `NetworkRuleAction` has no header fields, so the fix is to extend it
 (request/response header operations) and have `planDisableCache` emit e.g.
 `Cache-Control: no-store` on the request. Blocks FR-7.
 
-## G13 — The agent receives no runtime configuration (OPEN)
+## G13 — The agent receives no runtime configuration (RESOLVED)
+
+Resolved: the worker derives the agent config from settings (capture level,
+per-origin body capture, user redaction rules, latency) and pushes
+`panel.agentConfig` on the panel port; the content script forwards it as the
+guarded `agent.config` message over the committed bridge port. A real-browser
+Playwright test (`tests/e2e/specs/agent-config.spec.ts`) sets a setting and
+asserts its effect on captured data without a page reload.
+
+This also surfaced and fixed a wire-schema data-loss bug: `networkEntrySchema`
+omitted `bodyPreview`, `meta` and `startedAt`, so those were stripped at the
+service-worker boundary. Settings changes currently take effect when a tab's
+panel port connects (a live settings-change broadcast is not yet wired).
 
 The agent no longer answers commands over the port (ADR 0018), and it was never
 given per-origin configuration: `CaptureAgent` is constructed with default
