@@ -1,4 +1,4 @@
-import {
+﻿import {
   redactHeaders as defaultRedactHeaders,
   redactString as defaultRedactString,
   redactUrl,
@@ -9,6 +9,7 @@ import {
   type NetworkMeta,
   type NetworkTiming,
   type RedactedHeaders,
+  type RedactionRule,
 } from '../../core';
 import type { ClockPort } from '../../platform/ports';
 
@@ -119,9 +120,12 @@ export function buildTiming(
  */
 export class NetworkCollector {
   readonly #options: NetworkCollectorOptions;
-  readonly #capture: CaptureOptions;
-  readonly #redactHeaders: (headers: Readonly<Record<string, string>>) => RedactedHeaders;
-  readonly #redactString: (value: string) => string;
+  #capture: CaptureOptions;
+  readonly #redactHeadersOverride:
+    ((headers: Readonly<Record<string, string>>) => RedactedHeaders) | undefined;
+  readonly #redactStringOverride: ((value: string) => string) | undefined;
+  #extraRules: readonly RedactionRule[] = [];
+  #latencyMs: number;
   readonly #createId: () => string;
   readonly #buffer: ResourceEntryLike[] = [];
   #observer: ObserverLike | undefined;
@@ -133,13 +137,29 @@ export class NetworkCollector {
     this.#capture = { ...DEFAULT_CAPTURE, ...options.capture };
     // Redaction is on by default (PRD section 7 / G4): unlike the opt-in capture
     // flags, a caller must explicitly override these, never opt in to safety.
-    this.#redactHeaders = options.redactHeaders ?? defaultRedactHeaders;
-    this.#redactString = options.redactString ?? defaultRedactString;
+    this.#redactHeadersOverride = options.redactHeaders;
+    this.#redactStringOverride = options.redactString;
+    this.#latencyMs = options.artificialDelayMs ?? 0;
     this.#createId =
       options.createId ??
       createIdFactory({ now: () => Number(options.clock.now()), random: () => Math.random() });
     this.#startObserver();
     this.#patchFetch();
+  }
+
+  /** Applies a new capture level (headers/body) atomically (G13). */
+  setCaptureOptions(next: Partial<CaptureOptions>): void {
+    this.#capture = { ...this.#capture, ...next };
+  }
+
+  /** Applies an artificial latency to affected entries (G13, FR-7). */
+  setLatency(milliseconds: number): void {
+    this.#latencyMs = milliseconds;
+  }
+
+  /** Applies user redaction rules on top of the defaults (G13, FR-11). */
+  setRedactionRules(rules: readonly RedactionRule[]): void {
+    this.#extraRules = rules;
   }
 
   /** Restores the original fetch and disconnects the observer. */
@@ -190,6 +210,24 @@ export class NetworkCollector {
     }
   }
 
+  #safeHeaders(headers: Readonly<Record<string, string>>): RedactedHeaders {
+    return (
+      this.#redactHeadersOverride?.(headers) ??
+      defaultRedactHeaders(headers, { extraRules: this.#extraRules })
+    );
+  }
+
+  #safeString(value: string): string {
+    return (
+      this.#redactStringOverride?.(value) ??
+      defaultRedactString(value, { extraRules: this.#extraRules })
+    );
+  }
+
+  #safeUrl(url: string): string {
+    return redactUrl(url, { extraRules: this.#extraRules });
+  }
+
   #captureHeaders(response: FetchResponseLike): RedactedHeaders | undefined {
     if (!this.#capture.headers) {
       return undefined;
@@ -198,7 +236,7 @@ export class NetworkCollector {
     response.headers.forEach((value, key) => {
       headers[key] = value;
     });
-    return this.#redactHeaders(headers);
+    return this.#safeHeaders(headers);
   }
 
   async #captureBody(response: FetchResponseLike): Promise<string | undefined> {
@@ -208,7 +246,7 @@ export class NetworkCollector {
     try {
       const text = await response.clone().text();
       const capped = text.slice(0, this.#capture.maxBodyBytes);
-      return this.#redactString(capped);
+      return this.#safeString(capped);
     } catch {
       return undefined;
     }
@@ -234,14 +272,14 @@ export class NetworkCollector {
           this.#emit({
             id: this.#createId(),
             method,
-            url: redactUrl(url),
+            url: this.#safeUrl(url),
             status: null,
             resourceType: 'fetch',
             transferSize: toBytes(0),
             decodedSize: toBytes(0),
             fromCache: false,
             timing: buildTiming(undefined, Number(this.#options.clock.now()) - start),
-            failure: this.#redactString(describeError(error)),
+            failure: this.#safeString(describeError(error)),
             meta: { initiatorType: 'fetch' },
           });
         }
@@ -270,7 +308,7 @@ export class NetworkCollector {
     if (this.#disposed) {
       return;
     }
-    const delay = this.#options.artificialDelayMs ?? 0;
+    const delay = this.#latencyMs;
     if (delay > 0) {
       await this.#options.clock.delay(toMillis(delay));
     }
@@ -279,7 +317,7 @@ export class NetworkCollector {
     const decodedSize = resource?.decodedBodySize ?? 0;
     const meta: NetworkMeta = {
       redirected: response.redirected,
-      finalUrl: redactUrl(response.url),
+      finalUrl: this.#safeUrl(response.url),
       initiatorType: resource?.initiatorType ?? 'fetch',
       ...(delay > 0 ? { simulatedLatencyMs: delay } : {}),
     };
@@ -288,7 +326,7 @@ export class NetworkCollector {
     this.#emit({
       id: this.#createId(),
       method,
-      url: redactUrl(url),
+      url: this.#safeUrl(url),
       status: response.status,
       resourceType: resource?.initiatorType ?? 'fetch',
       transferSize: toBytes(transferSize),

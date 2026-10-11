@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AGENT_CONFIG_MESSAGE,
   BRIDGE_ACK_MESSAGE,
   BRIDGE_CHANNEL,
   BRIDGE_COMMIT_MESSAGE,
   HANDSHAKE_MESSAGE,
 } from '../../core';
-import { ackSchema, commitSchema, handshakeSchema } from '../../protocol';
+import { ackSchema, agentConfigSchema, commitSchema, handshakeSchema } from '../../protocol';
+import { parseAgentConfig } from './agent-config';
 import { parseAck, parseCommit, parseHandshake } from './handshake';
 
 interface Case {
@@ -93,6 +95,65 @@ describe('bridge hand-written guards agree with the Zod schemas', () => {
       expect(() => parseHandshake(fuzz)).not.toThrow();
       expect(() => parseAck(fuzz)).not.toThrow();
       expect(() => parseCommit(fuzz)).not.toThrow();
+      expect(() => parseAgentConfig(fuzz)).not.toThrow();
     }
+  });
+});
+
+describe('agent.config guard agrees with the Zod schema', () => {
+  const validConfig = {
+    captureLevel: 'standard',
+    bodyCapture: true,
+    redactionRules: [{ name: 'token', pattern: 'tok_[a-z]+' }],
+    latencyMs: 250,
+  };
+  const wrap = (config: unknown): unknown => ({
+    channel: BRIDGE_CHANNEL,
+    message: AGENT_CONFIG_MESSAGE,
+    config,
+  });
+  const configCases: readonly Case[] = [
+    { name: 'valid', value: wrap(validConfig) },
+    { name: 'bad capture level', value: wrap({ ...validConfig, captureLevel: 'nope' }) },
+    { name: 'negative latency', value: wrap({ ...validConfig, latencyMs: -1 }) },
+    { name: 'latency over cap', value: wrap({ ...validConfig, latencyMs: 120_000 }) },
+    { name: 'fractional latency', value: wrap({ ...validConfig, latencyMs: 1.5 }) },
+    { name: 'extra config key', value: wrap({ ...validConfig, extra: true }) },
+    {
+      name: 'missing body capture',
+      value: wrap({ captureLevel: 'standard', latencyMs: 0, redactionRules: [] }),
+    },
+    {
+      name: 'rule with empty name',
+      value: wrap({ ...validConfig, redactionRules: [{ name: '', pattern: 'a' }] }),
+    },
+    {
+      name: 'huge rule pattern',
+      value: wrap({ ...validConfig, redactionRules: [{ name: 'a', pattern: 'a'.repeat(1e6) }] }),
+    },
+    {
+      name: 'too many rules',
+      value: wrap({
+        ...validConfig,
+        redactionRules: Array.from({ length: 65 }, (_, i) => ({
+          name: `r${String(i)}`,
+          pattern: 'a',
+        })),
+      }),
+    },
+    { name: 'missing config', value: { channel: BRIDGE_CHANNEL, message: AGENT_CONFIG_MESSAGE } },
+    {
+      name: 'polluted config',
+      value: wrap(
+        JSON.parse(
+          '{"captureLevel":"standard","bodyCapture":true,"redactionRules":[],"latencyMs":0,"__proto__":{"polluted":true}}',
+        ),
+      ),
+    },
+    { name: 'null config', value: wrap(null) },
+  ];
+
+  it.each(configCases)('$name', ({ value }) => {
+    expect(parseAgentConfig(value).ok).toBe(agentConfigSchema.safeParse(value).success);
   });
 });

@@ -1,4 +1,4 @@
-import { browser } from 'wxt/browser';
+﻿import { browser } from 'wxt/browser';
 import {
   createIdFactory,
   foldCaptureEvents,
@@ -27,7 +27,16 @@ import {
   type PermissionsApi,
   type SiteScriptsApi,
 } from '../../platform/chrome';
-import { parseCommand, parseEvent } from '../../protocol';
+import { PROTOCOL_VERSION, parseCommand, parseEvent } from '../../protocol';
+
+/** Origin of a URL, or undefined when it cannot be parsed. */
+function originOf(url: string): string | undefined {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined;
+  }
+}
 
 function toInstalledReason(reason: string | undefined): InstalledReason {
   if (reason === 'install' || reason === 'update') {
@@ -147,6 +156,33 @@ export default defineBackground(() => {
     return true;
   });
 
+  const sendAgentConfig = async (
+    tabId: number,
+    port: { postMessage(message: unknown): void },
+  ): Promise<void> => {
+    const loaded = await settings.load();
+    const current = loaded.ok ? loaded.value : undefined;
+    const tab = await ports.tabs.get(toTabId(tabId));
+    const origin = tab.ok && tab.value.url !== undefined ? originOf(tab.value.url) : undefined;
+    const profile =
+      current !== undefined && origin !== undefined ? current.perOriginProfiles[origin] : undefined;
+    port.postMessage({
+      type: 'panel.agentConfig',
+      version: PROTOCOL_VERSION,
+      correlationId: createId(),
+      payload: {
+        captureLevel: current?.captureLevel ?? 'standard',
+        bodyCapture: profile?.bodyCapture ?? false,
+        redactionRules: (current?.redactionRules ?? []).map((rule) => ({
+          name: rule.name,
+          pattern: rule.pattern,
+          ...(rule.replacement === undefined ? {} : { replacement: rule.replacement }),
+        })),
+        latencyMs: 0,
+      },
+    });
+  };
+
   browser.runtime.onConnect.addListener((port) => {
     if (port.name !== PANEL_PORT_NAME) {
       return;
@@ -166,6 +202,7 @@ export default defineBackground(() => {
     set.add(broadcaster);
     broadcasters.set(tabId, set);
     void broadcaster.open();
+    void sendAgentConfig(tabId, port);
 
     port.onMessage.addListener((message: unknown) => {
       const parsed = parseCommand(message);

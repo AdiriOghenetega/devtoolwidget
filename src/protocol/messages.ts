@@ -1,4 +1,5 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
+import { agentConfigPayloadSchema } from './bridge';
 import { protocolErrorSchema } from './errors';
 import {
   captureBatchSchema,
@@ -135,6 +136,7 @@ export const errorMessageSchema = envelope('error', protocolErrorSchema);
 export const panelMessageSchema = z.discriminatedUnion('type', [
   envelope('panel.snapshot', pageSnapshotSchema),
   envelope('panel.delta', captureEventSchema),
+  envelope('panel.agentConfig', agentConfigPayloadSchema),
 ]);
 
 /** A panel push message. */
@@ -201,7 +203,7 @@ export const COMMAND_RESPONSE_MESSAGE_TYPES: ReadonlySet<string> = new Set([
   ...RESULT_TYPES,
   'error',
 ]);
-const PANEL_TYPES = ['panel.snapshot', 'panel.delta'] as const;
+const PANEL_TYPES = ['panel.snapshot', 'panel.delta', 'panel.agentConfig'] as const;
 export const PANEL_MESSAGE_TYPES: ReadonlySet<string> = new Set(PANEL_TYPES);
 export const ALL_MESSAGE_TYPES: ReadonlySet<string> = new Set([
   ...EVENT_TYPES,

@@ -98,6 +98,22 @@ export const redactedHeaderValueSchema = z.union([z.string(), z.array(z.string()
 export const redactedHeadersSchema = z.record(z.string(), redactedHeaderValueSchema);
 
 /** Wire schema for core `NetworkEntry`. */
+/** Wire schema for core `WebSocketMeta`. */
+export const webSocketMetaSchema = z.object({
+  opened: z.boolean(),
+  closed: z.boolean(),
+  code: z.number().int().exactOptional(),
+});
+
+/** Wire schema for core `NetworkMeta` (all fields optional, as in core). */
+export const networkMetaSchema = z.object({
+  redirected: z.boolean().exactOptional(),
+  finalUrl: z.string().exactOptional(),
+  initiatorType: z.string().exactOptional(),
+  simulatedLatencyMs: z.number().exactOptional(),
+  webSocket: webSocketMetaSchema.exactOptional(),
+});
+
 export const networkEntrySchema = z.object({
   id: z.string().min(1),
   method: z.string().min(1),
@@ -108,8 +124,11 @@ export const networkEntrySchema = z.object({
   decodedSize: bytesSchema,
   fromCache: z.boolean(),
   timing: networkTimingSchema,
+  startedAt: millisSchema.exactOptional(),
   failure: z.string().exactOptional(),
   headers: redactedHeadersSchema.exactOptional(),
+  bodyPreview: z.string().exactOptional(),
+  meta: networkMetaSchema.exactOptional(),
 });
 
 export const vitalNameSchema = z.enum(['LCP', 'CLS', 'INP', 'FCP', 'TTFB']);

@@ -128,4 +128,38 @@ export function storedChannelNames(serviceWorker: Worker): Promise<string[]> {
   });
 }
 
+/** Reads the `bodyPreview` of every persisted network event. */
+export function storedNetworkBodyPreviews(serviceWorker: Worker): Promise<string[]> {
+  return serviceWorker.evaluate(async () => {
+    const api = (
+      globalThis as unknown as {
+        chrome: {
+          storage: { session: { get(keys: null): Promise<Record<string, unknown>> } };
+        };
+      }
+    ).chrome;
+    const stored = await api.storage.session.get(null);
+    const previews: string[] = [];
+    for (const entry of Object.values(stored)) {
+      const session = (
+        entry as {
+          value?: {
+            events?: readonly {
+              channel?: unknown;
+              entry?: { bodyPreview?: unknown };
+            }[];
+          };
+        }
+      ).value;
+      for (const event of session?.events ?? []) {
+        const preview = event.channel === 'network' ? event.entry?.bodyPreview : undefined;
+        if (typeof preview === 'string') {
+          previews.push(preview);
+        }
+      }
+    }
+    return previews;
+  });
+}
+
 export { expect };
