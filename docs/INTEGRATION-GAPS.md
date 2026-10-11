@@ -23,6 +23,7 @@ Everything below is a wiring task; no new domain logic is implied.
 | G8  | Command reply envelope       | **Resolved** (Slice A, ADR 0013)                                                                                                                   |
 | G9  | Disable-cache DNR rule shape | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                             |
 | G10 | setThrottle application      | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                           |
+| G11 | Agent bundle over PRD budget | Open: `agent.js` is 39.43 kB gzipped against the PRD 15 kB budget (bundles Zod + core validation)                                                  |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -222,3 +223,13 @@ Slice C wired `setThrottle` to resolve the profile and echo it, but nothing is
 applied: the soft path needs the agent's `NetworkCollector` to take an
 `artificialDelayMs`, and reaching it means relaying the command SW→content→agent
 over the bridge — the remaining action hop. Blocks FR-7 and FR-12.
+
+## G11 — The agent bundle exceeds the PRD size budget (OPEN)
+
+`agent.js` is **39.43 kB gzipped** against the PRD §4 budget of **15 kB** (the UI
+budget, 120 kB, is met by the content bundle at 58.2 kB). The agent bundles Zod and
+the core validation path, which the injected main-world script does not strictly
+need end to end. `.size-limit.mjs` documents this and deliberately omits an agent
+entry while it fails (adding it would red the pipeline without a fix; see ADR
+0016). The intended fix is to validate only at the trust boundary that needs it or
+use a lighter schema in the agent, then add the entry to enforce the budget.
