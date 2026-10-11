@@ -7,11 +7,18 @@ import {
   type InstalledReason,
   type PageSnapshot,
 } from '../../core';
+import { buildSessionExport } from '../../capture/export';
 import { runFirstRun } from '../../capture/onboarding/first-run-flow';
+import { TabNetworkController } from '../../capture/network/tab-network-controller';
 import { PanelBroadcaster, PANEL_PORT_NAME, TabSessionStore } from '../../capture/pipeline';
 import { createCommandRouter, TabSessionRegistry, toCommandResponse } from '../../capture/session';
 import { SettingsService } from '../../capture/settings/settings-service';
 import { SiteAccessService } from '../../capture/site-access/site-access-service';
+import {
+  ClearOrchestrator,
+  createBackgroundClearExecutor,
+  createPageClearExecutor,
+} from '../../capture/storage';
 import {
   createChromePorts,
   createPermissionsPort,
@@ -43,7 +50,7 @@ export default defineBackground(() => {
   const ports = createChromePorts(browser as unknown as BrowserApi);
   const registry = new TabSessionRegistry(ports.storage);
   const sessions = new TabSessionStore(ports.storage);
-  const router = createCommandRouter({ registry });
+  const network = new TabNetworkController({ tabs: ports.tabs, rules: ports.networkRules });
   const settings = new SettingsService(ports.storage);
   const createId = createIdFactory({ now: () => Date.now(), random: () => Math.random() });
   const broadcasters = new Map<number, Set<PanelBroadcaster>>();
@@ -66,6 +73,31 @@ export default defineBackground(() => {
       events: session?.events ?? [],
     });
   };
+
+  const router = createCommandRouter({
+    registry,
+    network,
+    snapshot: (tabId) => snapshotFor(tabId),
+    clear: (tabId, request) =>
+      new ClearOrchestrator({
+        page: createPageClearExecutor(ports.scripting, tabId),
+        background: createBackgroundClearExecutor(ports.browsingData),
+      }).clear(request),
+    exportReport: async (tabId, format) =>
+      buildSessionExport(
+        {
+          snapshot: await snapshotFor(tabId),
+          userAgent: navigator.userAgent,
+          extensionVersion: browser.runtime.getManifest().version,
+        },
+        format,
+      ),
+    resolveThrottle: (profile) => network.setThrottle(profile),
+    tabUrl: async (tabId) => {
+      const tab = await ports.tabs.get(tabId);
+      return tab.ok ? tab.value.url : undefined;
+    },
+  });
 
   const pushToPanels = (tabId: number, events: readonly CaptureEvent[]): void => {
     const set = broadcasters.get(tabId);
@@ -159,10 +191,16 @@ export default defineBackground(() => {
 
   browser.runtime.onStartup.addListener(() => {
     void siteAccess.sync();
+    void ports.tabs.query({}).then((tabs) => {
+      if (tabs.ok) {
+        void network.sync(tabs.value.map((tab) => Number(tab.id)));
+      }
+    });
   });
 
   browser.tabs.onRemoved.addListener((tabId) => {
     void sessions.clear(toTabId(tabId));
+    void network.cleanup(toTabId(tabId));
     broadcasters.delete(tabId);
   });
 });
