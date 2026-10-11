@@ -35,5 +35,7 @@ export interface Finding {
   readonly evidence: readonly string[];
   readonly suggestion: string;
   readonly docsUrl?: string;
+  /** Estimated impact (0–100) used to rank findings of the same severity. */
+  readonly impact?: number;
   readonly actions: readonly ActionRef[];
 }
