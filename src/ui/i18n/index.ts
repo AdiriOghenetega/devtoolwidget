@@ -35,6 +35,28 @@ export const messages = {
   'shell.dock.bottom': 'Dock bottom',
   'shell.dock.floating': 'Float',
   'shell.disabled': 'devToolWidget is disabled on this site',
+  'overview.title': 'Overview',
+  'overview.health': 'Health {score}',
+  'overview.category.network': 'Network',
+  'overview.category.performance': 'Performance',
+  'overview.category.console': 'Console',
+  'overview.category.storage': 'Storage',
+  'overview.counters.console': 'Console errors: {count}',
+  'overview.counters.network': 'Requests: {count}',
+  'overview.findings.none': 'No findings yet',
+  'overview.loading': 'Loading...',
+  'overview.empty': 'Nothing captured yet. Reload the page.',
+  'overview.error': 'Something went wrong while loading data.',
+  'overview.disconnected': 'Disconnected from the page.',
+  'overview.retry': 'Retry',
+  'overview.action.clearData': 'Clear site data',
+  'overview.action.hardReload': 'Hard reload',
+  'overview.action.disableCache': 'Disable cache',
+  'overview.action.throttle': 'Throttle',
+  'overview.action.export': 'Export report',
+  'overview.confirm.clear.title': 'Clear site data?',
+  'overview.confirm.clear.body':
+    'This removes cookies and storage for this origin and cannot be undone.',
 } as const;
 
 /** A compile-checked message key. */
