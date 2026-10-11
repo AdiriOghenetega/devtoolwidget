@@ -74,6 +74,40 @@ reliable on this machine; re-measure on the CI runner to confirm.
   absolute gate would be flaky; the numbers are logged (`[bench] …`) and should be
   trended, not hard-gated.
 
+## Ablation: which component carries the overhead
+
+Second test in the same spec: series **none**, **agent-only**, **content-only**
+(the shipped content bundle, which includes the bridge **and** the UI), and **all**,
+N=20 each, same CDP `TaskDuration` method.
+
+**Result (platform `win32`, n=20, metric `TaskDuration`):**
+
+| series       | median   | IQR     | delta vs none |
+| ------------ | -------- | ------- | ------------- |
+| none         | 110.2 ms | 5.5 ms  | —             |
+| agent-only   | 117.6 ms | 7.3 ms  | +7.4 ms       |
+| content-only | 187.5 ms | 12.8 ms | +77.3 ms      |
+| all          | 200.5 ms | 26.7 ms | +90.3 ms      |
+
+**Finding:** the **content script carries almost all of the overhead (~77 ms)**;
+the main-world agent adds only **~7 ms**. The content bundle is 183.8 kB and the
+entrypoint mounts the UI eagerly.
+
+**UI is loaded and executed at `document_start`.** `src/entrypoints/content/index.ts`
+calls `render(h(Widget, …))` unconditionally at document_start, and the built
+`content-scripts/content.js` contains the shell (markers `dwt-launcher`,
+`dwt-shell`, `dwt-overview`, Preact). Only the **panel module** is lazy
+(`createPanelLoader` → dynamic import); the **shell/launcher UI is eager**. This
+**contradicts the PRD's lazy-load intent** — the shell should be deferred until
+first open or `document_idle`.
+
+**Caveats:** "content-only" is the shipped bundle, so it conflates the bridge with
+the UI; separating "bridge, no UI" needs a build variant (no test hook in
+production). The IQRs are small, so the attribution is trustworthy.
+
+**No optimisation was applied** (per instruction). The candidate order in the plan
+below now leads with deferring the shell/UI mount, not the agent.
+
 ## Memory under an event flood
 
 - **Spec:** `tests/e2e/specs/memory-flood.spec.ts`.

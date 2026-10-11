@@ -1,8 +1,39 @@
 ﻿import type { BrowserContext, CDPSession, Page, Worker } from '@playwright/test';
-import { expect, registerExtensionScripts, test } from '../fixtures/extension';
+import { CONTENT_SCRIPTS, expect, registerExtensionScripts, test } from '../fixtures/extension';
 
 const ITERATIONS = 30;
+const ABLATION_ITERATIONS = 20;
 const FIXTURE_PATH = '/';
+
+/** Registers only the named site scripts (unregistering everything first). */
+async function registerSubset(serviceWorker: Worker, ids: readonly string[]): Promise<void> {
+  await serviceWorker.evaluate(
+    async (args) => {
+      const api = (
+        globalThis as unknown as {
+          chrome: {
+            scripting: {
+              getRegisteredContentScripts(): Promise<readonly { id: string }[]>;
+              unregisterContentScripts(filter: { ids: readonly string[] }): Promise<void>;
+              registerContentScripts(scripts: readonly unknown[]): Promise<void>;
+            };
+          };
+        }
+      ).chrome;
+      const registered = await api.scripting.getRegisteredContentScripts();
+      if (registered.length > 0) {
+        await api.scripting.unregisterContentScripts({
+          ids: registered.map((script) => script.id),
+        });
+      }
+      const chosen = args.scripts.filter((script) => args.ids.includes(script.id));
+      if (chosen.length > 0) {
+        await api.scripting.registerContentScripts(chosen);
+      }
+    },
+    { ids, scripts: CONTENT_SCRIPTS },
+  );
+}
 
 /** Reads the cumulative `TaskDuration` (seconds) from the CDP performance metrics. */
 async function taskDurationSeconds(cdp: CDPSession): Promise<number> {
@@ -118,5 +149,52 @@ test.describe('performance benchmark', () => {
     expect(withScripts.median).toBeGreaterThan(0);
     // Generous relative guard: only a catastrophic regression fails.
     expect(withScripts.median).toBeLessThanOrEqual(base.median * 3 + 50);
+  });
+
+  /**
+   * Ablation: attribute the overhead to the agent vs the content script (which
+   * ships the bridge and the UI). Series: none, agent only, content only, all.
+   * The content bundle is the production one, so "content only" includes the UI —
+   * a true no-UI variant needs a separate build (noted in PERFORMANCE.md).
+   */
+  test('ablates the overhead across agent and content series', async ({
+    context,
+    serviceWorker,
+  }) => {
+    const agentOnly = ['devtoolwidget-agent'];
+    const contentOnly = ['devtoolwidget-content'];
+    const all = CONTENT_SCRIPTS.map((script) => script.id);
+
+    const seriesNames = ['none', 'agent-only', 'content-only', 'all'] as const;
+    const seriesIds: Record<(typeof seriesNames)[number], readonly string[]> = {
+      none: [],
+      'agent-only': agentOnly,
+      'content-only': contentOnly,
+      all,
+    };
+    const results: Record<string, { readonly median: number; readonly iqr: number }> = {};
+
+    for (const name of seriesNames) {
+      await registerSubset(serviceWorker, seriesIds[name]);
+      const values: number[] = [];
+      await measureTaskMs(context); // warm-up
+      for (let index = 0; index < ABLATION_ITERATIONS; index += 1) {
+        values.push(await measureTaskMs(context));
+      }
+      results[name] = summarize(values);
+    }
+
+    const line = (name: string): string => {
+      const result = results[name] ?? { median: 0, iqr: 0 };
+      return `${name}=${result.median.toFixed(1)}ms(iqr ${result.iqr.toFixed(1)})`;
+    };
+    console.log(
+      `[ablation] platform=${process.platform} n=${String(ABLATION_ITERATIONS)} metric=TaskDuration ` +
+        seriesNames.map((name) => line(name)).join(' '),
+    );
+
+    for (const name of seriesNames) {
+      expect(results[name]?.median).toBeGreaterThan(0);
+    }
   });
 });
