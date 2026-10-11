@@ -1,14 +1,15 @@
 import { browser } from 'wxt/browser';
 import { createIdFactory } from '../../core';
 import { connectAgentBridge } from '../../capture/bridge';
-import { PROTOCOL_VERSION, parseResult } from '../../protocol';
+import { PROTOCOL_VERSION, parseCommandResponse } from '../../protocol';
 import { hostWidgetRoot } from '../../ui/widget-root';
 
 /**
  * Content script (PRD 8.1): runs at `document_start` in the isolated world,
  * hosts the widget root and connects the secure bridge to the main-world agent.
- * The UI stub pings the service worker, which routes the command to the agent.
- * Contains no business logic beyond wiring.
+ * It forwards the agent's batched capture events to the service worker and pings
+ * it so the panel knows the bridge is live. Contains no business logic beyond
+ * wiring.
  */
 export default defineContentScript({
   registration: 'runtime',
@@ -33,6 +34,9 @@ export default defineContentScript({
         dispose = () => {
           connection.value.dispose();
         };
+        connection.value.onEvent((message) => {
+          void browser.runtime.sendMessage(message).catch(() => undefined);
+        });
         root.setStatus('agent connected');
         const response: unknown = await browser.runtime.sendMessage({
           type: 'command.ping',
@@ -40,7 +44,7 @@ export default defineContentScript({
           correlationId: createId(),
           payload: {},
         });
-        const parsed = parseResult(response);
+        const parsed = parseCommandResponse(response);
         root.setStatus(parsed.ok ? 'pong' : 'ping failed');
       })
       .catch(() => {

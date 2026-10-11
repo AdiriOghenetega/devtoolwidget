@@ -2,7 +2,7 @@ import { browser } from 'wxt/browser';
 import { toTabId, type InstalledReason } from '../../core';
 import { runFirstRun } from '../../capture/onboarding/first-run-flow';
 import { TabSessionStore } from '../../capture/pipeline';
-import { createCommandRouter, TabSessionRegistry } from '../../capture/session';
+import { createCommandRouter, TabSessionRegistry, toCommandResponse } from '../../capture/session';
 import { SettingsService } from '../../capture/settings/settings-service';
 import { SiteAccessService } from '../../capture/site-access/site-access-service';
 import {
@@ -13,7 +13,7 @@ import {
   type PermissionsApi,
   type SiteScriptsApi,
 } from '../../platform/chrome';
-import { parseCommand } from '../../protocol';
+import { parseCommand, parseEvent } from '../../protocol';
 
 function toInstalledReason(reason: string | undefined): InstalledReason {
   if (reason === 'install' || reason === 'update') {
@@ -26,10 +26,14 @@ function toInstalledReason(reason: string | undefined): InstalledReason {
  * Background service worker (PRD 8.1). Wires the platform adapters, the per-tab
  * session registry, the typed command router, the settings service, the
  * site-access service and the first-run flow. Contains no business logic.
+ *
+ * Inbound messages are either capture events (stored per tab) or commands
+ * (routed and answered with a single response envelope).
  */
 export default defineBackground(() => {
   const ports = createChromePorts(browser as unknown as BrowserApi);
   const registry = new TabSessionRegistry(ports.storage);
+  const sessions = new TabSessionStore(ports.storage);
   const router = createCommandRouter({ registry });
   const settings = new SettingsService(ports.storage);
   const siteAccess = new SiteAccessService({
@@ -42,6 +46,20 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    const event = parseEvent(message);
+    if (event.ok) {
+      const tabId = sender.tab?.id;
+      if (tabId !== undefined) {
+        void sessions.applyBatch({
+          tabId: toTabId(tabId),
+          sequence: event.value.payload.sequence,
+          dropped: event.value.payload.dropped,
+          events: event.value.payload.events,
+        });
+      }
+      return false;
+    }
+
     const parsed = parseCommand(message);
     if (!parsed.ok) {
       return false;
@@ -50,7 +68,7 @@ export default defineBackground(() => {
     void router
       .handle(parsed.value, tabId === undefined ? {} : { tabId: toTabId(tabId) })
       .then((outcome) => {
-        sendResponse(outcome);
+        sendResponse(toCommandResponse(parsed.value.correlationId, outcome));
       });
     return true;
   });
@@ -64,8 +82,7 @@ export default defineBackground(() => {
     void siteAccess.sync();
   });
 
-  const pipelineSessions = new TabSessionStore(ports.storage);
   browser.tabs.onRemoved.addListener((tabId) => {
-    void pipelineSessions.clear(toTabId(tabId));
+    void sessions.clear(toTabId(tabId));
   });
 });

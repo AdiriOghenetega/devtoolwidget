@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { aSnapshot, toMillis } from '../../core';
-import { PROTOCOL_VERSION } from '../../protocol';
 import { createOverviewStore } from './stores';
 
 describe('createOverviewStore', () => {
@@ -31,10 +30,9 @@ describe('createOverviewStore', () => {
     store.applySnapshot(aSnapshot().capturedAt(1000).build());
 
     const stale = {
-      type: 'event.console' as const,
-      version: PROTOCOL_VERSION,
-      correlationId: 'a',
-      payload: {
+      at: toMillis(500),
+      channel: 'console' as const,
+      entry: {
         id: 'old',
         kind: 'console' as const,
         level: 'error' as const,
@@ -48,8 +46,7 @@ describe('createOverviewStore', () => {
 
     const fresh = {
       ...stale,
-      correlationId: 'b',
-      payload: { ...stale.payload, id: 'new', timestamp: toMillis(2000) },
+      entry: { ...stale.entry, id: 'new', timestamp: toMillis(2000) },
     };
     store.applyEvent(fresh);
     store.applyEvent(fresh);
