@@ -1,4 +1,5 @@
 import type { JSX } from 'preact';
+import { useRef } from 'preact/hooks';
 
 /** Props for {@link Checkbox}. */
 export interface CheckboxProps {
@@ -10,7 +11,8 @@ export interface CheckboxProps {
 
 /** A labelled checkbox. */
 export function Checkbox({ label, checked, id, onChange }: CheckboxProps): JSX.Element {
-  const checkboxId = id ?? 'dwt-checkbox';
+  const generatedId = useRef(`dwt-checkbox-${Math.random().toString(36).slice(2)}`);
+  const checkboxId = id ?? generatedId.current;
   return (
     <label class="dwt-checkbox" for={checkboxId}>
       <input
