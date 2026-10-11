@@ -15,6 +15,7 @@ import {
 import { platformError, type PlatformError } from '../../platform/ports/errors';
 import { PROTOCOL_VERSION, type CommandMessage, type ResultMessage } from '../../protocol';
 import type { TabNetworkController } from '../network/tab-network-controller';
+import type { SiteAccessService } from '../site-access/site-access-service';
 import type { TabSessionRegistry } from './session-registry';
 
 /** Context a routed command runs in. */
@@ -45,6 +46,8 @@ export interface CommandRouterDeps {
   readonly resolveThrottle: (profile: ThrottleProfile) => ThrottleResolution;
   /** The current tab's URL, used for the origin-scoped clear preset. */
   readonly tabUrl: (tabId: TabId) => Promise<string | undefined>;
+  /** Per-origin optional access: request/register and revoke/unregister. */
+  readonly siteAccess: Pick<SiteAccessService, 'grant' | 'revoke'>;
 }
 
 function originOf(url: string | undefined): string | undefined {
@@ -172,7 +175,54 @@ export function createCommandRouter(deps: CommandRouterDeps): CommandRouter {
             },
           });
         }
+        case 'command.grantAccess': {
+          const origin = await resolveOrigin(command.payload.origin, tabId, deps);
+          if (origin === undefined) {
+            return err(platformError('invalid-argument', 'No origin to grant access to'));
+          }
+          const granted = await deps.siteAccess.grant(origin);
+          if (!granted.ok) {
+            return err(granted.error);
+          }
+          return ok({
+            type: 'result.grantAccess',
+            version: PROTOCOL_VERSION,
+            correlationId: command.correlationId,
+            payload: { origin, status: granted.value },
+          });
+        }
+        case 'command.revokeAccess': {
+          const origin = await resolveOrigin(command.payload.origin, tabId, deps);
+          if (origin === undefined) {
+            return err(platformError('invalid-argument', 'No origin to revoke access from'));
+          }
+          const revoked = await deps.siteAccess.revoke(origin);
+          if (!revoked.ok) {
+            return err(revoked.error);
+          }
+          return ok({
+            type: 'result.revokeAccess',
+            version: PROTOCOL_VERSION,
+            correlationId: command.correlationId,
+            payload: { origin, revoked: true },
+          });
+        }
       }
     },
   };
+}
+
+/** Resolves the access origin from the command payload or the tab's current URL. */
+async function resolveOrigin(
+  payloadOrigin: string | undefined,
+  tabId: TabId | undefined,
+  deps: CommandRouterDeps,
+): Promise<string | undefined> {
+  if (payloadOrigin !== undefined) {
+    return payloadOrigin;
+  }
+  if (tabId === undefined) {
+    return undefined;
+  }
+  return originOf(await deps.tabUrl(tabId));
 }

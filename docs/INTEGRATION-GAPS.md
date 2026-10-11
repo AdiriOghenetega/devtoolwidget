@@ -11,19 +11,20 @@ Everything below is a wiring task; no new domain logic is implied.
 
 ## Status
 
-| Gap | Area                         | Status                                                                                                                                             |
-| --- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1  | Capture wiring               | **Resolved** (Slice A, ADR 0013)                                                                                                                   |
-| G2  | Widget shell not mounted     | **Resolved** (Slice B)                                                                                                                             |
-| G3  | Screens/stores not connected | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C)                                           |
-| G4  | Router handles `ping` only   | **Resolved** (Slice C) for hardReload/setThrottle/toggleDisableCache/getSnapshot/clearStorage/exportReport; setThrottle application deferred (G10) |
-| G5  | Clear/snapshot/export        | **Resolved** (Slice C)                                                                                                                             |
-| G6  | Site-access registration     | Open (Slice D)                                                                                                                                     |
-| G7  | Bridge ack never received    | **Resolved** (Slice A, ADR 0013)                                                                                                                   |
-| G8  | Command reply envelope       | **Resolved** (Slice A, ADR 0013)                                                                                                                   |
-| G9  | Disable-cache DNR rule shape | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                             |
-| G10 | setThrottle application      | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                           |
-| G11 | Agent bundle over PRD budget | Open: `agent.js` is 39.43 kB gzipped against the PRD 15 kB budget (bundles Zod + core validation)                                                  |
+| Gap | Area                                  | Status                                                                                                                                                                                     |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G1  | Capture wiring                        | **Resolved** (Slice A, ADR 0013)                                                                                                                                                           |
+| G2  | Widget shell not mounted              | **Resolved** (Slice B)                                                                                                                                                                     |
+| G3  | Screens/stores not connected          | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C)                                                                                   |
+| G4  | Router handles `ping` only            | **Resolved** (Slice C) for hardReload/setThrottle/toggleDisableCache/getSnapshot/clearStorage/exportReport; setThrottle application deferred (G10)                                         |
+| G5  | Clear/snapshot/export                 | **Resolved** (Slice C)                                                                                                                                                                     |
+| G6  | Site-access registration              | **Resolved** (Slice D): the service is wired and reachable via `command.grantAccess`/`command.revokeAccess`; the optional-permission model and its UI are G12                              |
+| G7  | Bridge ack never received             | **Resolved** (Slice A, ADR 0013)                                                                                                                                                           |
+| G8  | Command reply envelope                | **Resolved** (Slice A, ADR 0013)                                                                                                                                                           |
+| G9  | Disable-cache DNR rule shape          | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                                                                     |
+| G10 | setThrottle application               | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                                                                   |
+| G11 | Agent bundle over PRD budget          | Open: `agent.js` is 39.43 kB gzipped against the PRD 15 kB budget (bundles Zod + core validation)                                                                                          |
+| G12 | Optional host permission + options UI | Open: the manifest requires `<all_urls>` host access, so `grant` is `already-granted` and `revoke` cannot remove a required permission; no gesture-capable options page exists to drive it |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -119,7 +120,13 @@ Evidence:
 
 Blocks: FR-6, FR-9, FR-10.
 
-## G6 — Runtime scripts are never registered, so the widget never injects
+## G6 — Runtime scripts are never registered, so the widget never injects (RESOLVED, Slice D)
+
+> Resolved by Slice D: `SiteAccessService` is constructed in the worker, `sync()`
+> runs on install/startup and `onRevoked` unregisters, and the service is reachable
+> from any extension context through the new `command.grantAccess` /
+> `command.revokeAccess` commands (ADR 0017). Covered by the router tests. The
+> optional-permission model and its UI are tracked as G12.
 
 Both `content` and `agent` use `registration: 'runtime'`, so WXT does not add
 them to the manifest. The built `manifest.json` has **no** `content_scripts`
