@@ -24,12 +24,12 @@ function getSnapshotResult(correlationId: string): ResultMessage {
   };
 }
 
-function storageEvent(correlationId: string): ProtocolMessage {
+function batchEvent(correlationId: string): ProtocolMessage {
   return {
-    type: 'event.storage',
+    type: 'event.batch',
     version: PROTOCOL_VERSION,
     correlationId,
-    payload: { areas: [] },
+    payload: { sequence: 0, dropped: 0, events: [] },
   };
 }
 
@@ -39,10 +39,10 @@ describe('createInMemoryChannelPair', () => {
     const received: ProtocolMessage[] = [];
     a.on((message) => received.push(message));
 
-    b.send(storageEvent('e1'));
+    b.send(batchEvent('e1'));
 
     expect(received).toHaveLength(1);
-    expect(received[0]?.type).toBe('event.storage');
+    expect(received[0]?.type).toBe('event.batch');
   });
 
   it('resolves a request with the correlated result', async () => {
@@ -125,9 +125,9 @@ describe('createInMemoryChannelPair', () => {
       count += 1;
     });
 
-    b.send(storageEvent('e1'));
+    b.send(batchEvent('e1'));
     unsubscribe();
-    b.send(storageEvent('e2'));
+    b.send(batchEvent('e2'));
 
     expect(count).toBe(1);
   });

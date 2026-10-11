@@ -6,10 +6,10 @@ describe('protocol public API barrel', () => {
     expect(PROTOCOL_VERSION).toBe(1);
 
     const result = parseMessage({
-      type: 'event.storage',
+      type: 'event.batch',
       version: PROTOCOL_VERSION,
       correlationId: 'c1',
-      payload: { areas: [] },
+      payload: { sequence: 0, dropped: 0, events: [] },
     });
     expect(result.ok).toBe(true);
   });

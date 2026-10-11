@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { toBytes, toMillis, toTabId, type SerializedValue } from '../core';
+import { MAX_BATCH_EVENTS, toBytes, toMillis, toTabId, type SerializedValue } from '../core';
 
 /**
  * Zod schemas for the payloads that cross the wire. They are the wire contract;
@@ -80,7 +80,7 @@ export const consoleEntrySchema = z.object({
   level: consoleLevelSchema,
   timestamp: millisSchema,
   args: z.array(serializedValueSchema),
-  stack: z.string().optional(),
+  stack: z.string().exactOptional(),
   count: z.number().int().nonnegative(),
 });
 
@@ -108,8 +108,8 @@ export const networkEntrySchema = z.object({
   decodedSize: bytesSchema,
   fromCache: z.boolean(),
   timing: networkTimingSchema,
-  failure: z.string().optional(),
-  headers: redactedHeadersSchema.optional(),
+  failure: z.string().exactOptional(),
+  headers: redactedHeadersSchema.exactOptional(),
 });
 
 export const vitalNameSchema = z.enum(['LCP', 'CLS', 'INP', 'FCP', 'TTFB']);
@@ -121,19 +121,19 @@ export const vitalMetricSchema = z.discriminatedUnion('name', [
     name: z.literal('LCP'),
     value: z.number(),
     rating: vitalRatingSchema,
-    element: z.string().optional(),
+    element: z.string().exactOptional(),
   }),
   z.object({
     name: z.literal('CLS'),
     value: z.number(),
     rating: vitalRatingSchema,
-    shiftedNodes: z.array(z.string()).optional(),
+    shiftedNodes: z.array(z.string()).exactOptional(),
   }),
   z.object({
     name: z.literal('INP'),
     value: z.number(),
     rating: vitalRatingSchema,
-    interactionTarget: z.string().optional(),
+    interactionTarget: z.string().exactOptional(),
   }),
   z.object({ name: z.literal('FCP'), value: z.number(), rating: vitalRatingSchema }),
   z.object({ name: z.literal('TTFB'), value: z.number(), rating: vitalRatingSchema }),
@@ -143,8 +143,8 @@ export const vitalMetricSchema = z.discriminatedUnion('name', [
 export const longTaskSchema = z.object({
   startTime: millisSchema,
   duration: millisSchema,
-  name: z.string().optional(),
-  blockingDuration: millisSchema.optional(),
+  name: z.string().exactOptional(),
+  blockingDuration: millisSchema.exactOptional(),
 });
 
 export const storageAreaSchema = z.enum([
@@ -165,6 +165,35 @@ export const storageAreaUsageSchema = z.object({
 /** Wire schema for core `StorageSummary`. */
 export const storageSummarySchema = z.object({
   areas: z.array(storageAreaUsageSchema),
+});
+
+/**
+ * Wire schema for one core `CaptureEvent`. The discriminant is `channel`; every
+ * variant carries the core domain payload plus the capture timestamp. It mirrors
+ * the `CaptureEvent` union in `core/domain/capture-event.ts` (verified by
+ * `payloads.test-d.ts`), so there is a single source of truth for the shapes.
+ */
+export const captureEventSchema = z.discriminatedUnion('channel', [
+  z.object({ at: millisSchema, channel: z.literal('console'), entry: consoleEntrySchema }),
+  z.object({ at: millisSchema, channel: z.literal('network'), entry: networkEntrySchema }),
+  z.object({
+    at: millisSchema,
+    channel: z.literal('performance'),
+    vitals: z.array(vitalMetricSchema),
+    longTasks: z.array(longTaskSchema),
+  }),
+  z.object({ at: millisSchema, channel: z.literal('storage'), summary: storageSummarySchema }),
+]);
+
+/**
+ * Wire schema for one `event.batch`: a typed batch of capture events with a
+ * monotonic sequence and the pipeline's cumulative dropped count. A batch above
+ * {@link MAX_BATCH_EVENTS} is rejected at the trust boundary (PRD 7).
+ */
+export const captureBatchSchema = z.object({
+  sequence: z.number().int().nonnegative(),
+  dropped: z.number().int().nonnegative(),
+  events: z.array(captureEventSchema).max(MAX_BATCH_EVENTS),
 });
 
 /** Wire schema for core `PageSnapshot`. */
