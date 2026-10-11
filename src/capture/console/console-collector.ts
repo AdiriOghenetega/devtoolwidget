@@ -1,5 +1,6 @@
 import {
   createIdFactory,
+  redactSerialized,
   serializeValue,
   type ConsoleEntry,
   type ConsoleLevel,
@@ -108,7 +109,9 @@ export class ConsoleCollector {
     this.#createId =
       options.createId ??
       createIdFactory({ now: () => Number(this.#clock.now()), random: () => Math.random() });
-    this.#serialize = options.serialize ?? ((value) => serializeValue(value));
+    // Redaction is on by default (PRD section 7 / G4): serialized string values
+    // (including JWT-shaped strings) are redacted unless a caller overrides it.
+    this.#serialize = options.serialize ?? ((value) => redactSerialized(serializeValue(value)));
     this.#install();
   }
 

@@ -34,7 +34,8 @@ export interface RedactedExportInput {
   readonly storageKeys: readonly string[];
 }
 
-function redactSerialized(value: SerializedValue): SerializedValue {
+/** Redacts the string values inside a serialized console value. Pure. */
+export function redactSerialized(value: SerializedValue): SerializedValue {
   switch (value.type) {
     case 'string':
       return { type: 'string', value: redactString(value.value) };
