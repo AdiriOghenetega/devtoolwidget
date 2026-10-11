@@ -1,20 +1,23 @@
 // Size budgets.
 //
 // ADR 0006 said to enforce only bundles that exist and to add entries for the
-// agent and UI when they land. ADR 0016 amends the background placeholder after
-// the command handlers (Slice C) made the worker host the network controller,
-// the clear executors (including the serialized page-clearing function) and the
-// report path.
+// agent and UI when they land. ADR 0016 amended the background placeholder;
+// ADR 0018 made the agent budget enforceable by removing Zod from the agent's
+// reachable graph (hand-written bridge guards) and moving the settings schema to
+// `protocol`.
 //
-// Measured, gzipped (2026-10-11): background 42.95 kB, agent 39.43 kB,
-// content (UI host) 56.92 kB.
-//
-// PRD section 4 budgets:
-//   - injected main-world agent: < 15 kB gzipped -> NOT met today (39.43 kB);
-//     tracked as gap G11 (the agent bundles Zod + core validation). No entry is
-//     added while it fails, so the gate stays green and the work stays visible.
-//   - lazy-loaded UI bundle:     < 120 kB gzipped -> met by the content bundle.
+// Measured, gzipped (2026-10-11): agent 12.60 kB, background 43.23 kB,
+// content (UI host) 56.15 kB.
 export default [
+  {
+    name: 'agent (main world)',
+    path: '.output/chrome-mv3/agent.js',
+    // PRD section 4 budget for the injected main-world agent. Enforced; the
+    // dependency-cruiser rule 'agent-must-not-reach-runtime-zod' explains the
+    // cause if this regresses.
+    limit: '15 kB',
+    gzip: true,
+  },
   {
     name: 'background (MV3)',
     path: '.output/chrome-mv3/background.js',
