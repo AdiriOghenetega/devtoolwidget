@@ -152,14 +152,18 @@ test.describe('performance benchmark', () => {
   });
 
   /**
-   * Ablation: attribute the overhead to the agent vs the content script (which
-   * ships the bridge and the UI). Series: none, agent only, content only, all.
-   * The content bundle is the production one, so "content only" includes the UI —
-   * a true no-UI variant needs a separate build (noted in PERFORMANCE.md).
+   * Ablation: attribute the overhead to the agent, to our content script, and to
+   * the fixed cost of injecting *any* content script. Series `none`, `agent-only`,
+   * `content-only`, `all` run in the extension context; `bare` (no extension) and
+   * `noop-content` (a minimal no-op `document_start` content script in its own
+   * extension) are matched baselines. `content-only` is the production bundle, so
+   * it includes the bridge and the (not-yet-executed) UI — see PERFORMANCE.md.
    */
-  test('ablates the overhead across agent and content series', async ({
+  test('ablates the overhead across agent, content and baseline series', async ({
     context,
     serviceWorker,
+    noopContext,
+    bareContext,
   }) => {
     const agentOnly = ['devtoolwidget-agent'];
     const contentOnly = ['devtoolwidget-content'];
@@ -184,16 +188,39 @@ test.describe('performance benchmark', () => {
       results[name] = summarize(values);
     }
 
+    // Matched baselines: a browser with no extension at all, and one with only a
+    // no-op document_start content script. Their gap is the fixed injection cost.
+    for (const [name, measureContext] of [
+      ['bare', bareContext],
+      ['noop-content', noopContext],
+    ] as const) {
+      const values: number[] = [];
+      await measureTaskMs(measureContext); // warm-up
+      for (let index = 0; index < ABLATION_ITERATIONS; index += 1) {
+        values.push(await measureTaskMs(measureContext));
+      }
+      results[name] = summarize(values);
+    }
+
+    const names = [...seriesNames, 'bare', 'noop-content'] as const;
     const line = (name: string): string => {
       const result = results[name] ?? { median: 0, iqr: 0 };
       return `${name}=${result.median.toFixed(1)}ms(iqr ${result.iqr.toFixed(1)})`;
     };
     console.log(
       `[ablation] platform=${process.platform} n=${String(ABLATION_ITERATIONS)} metric=TaskDuration ` +
-        seriesNames.map((name) => line(name)).join(' '),
+        names.map((name) => line(name)).join(' '),
     );
 
-    for (const name of seriesNames) {
+    const delta = (name: string, base: string): number =>
+      (results[name]?.median ?? 0) - (results[base]?.median ?? 0);
+    console.log(
+      `[ablation] fixed-injection=${delta('noop-content', 'bare').toFixed(1)}ms ` +
+        `our-content-over-fixed=${delta('content-only', 'noop-content').toFixed(1)}ms ` +
+        `agent=${delta('agent-only', 'none').toFixed(1)}ms`,
+    );
+
+    for (const name of names) {
       expect(results[name]?.median).toBeGreaterThan(0);
     }
   });

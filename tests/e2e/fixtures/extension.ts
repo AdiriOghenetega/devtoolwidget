@@ -2,13 +2,17 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, expect, test as base, type BrowserContext, type Worker } from '@playwright/test';
-import { EXTENSION_PATH, isHeaded } from '../constants';
+import { EXTENSION_PATH, isHeaded, NOOP_EXTENSION_PATH } from '../constants';
 
 /** The extra fixtures the extension harness exposes to specs. */
 export interface ExtensionFixtures {
   readonly context: BrowserContext;
   readonly extensionId: string;
   readonly serviceWorker: Worker;
+  /** A persistent context with the minimal no-op baseline extension loaded. */
+  readonly noopContext: BrowserContext;
+  /** A persistent context with no extension at all (baseline reference). */
+  readonly bareContext: BrowserContext;
 }
 
 /** One `chrome.scripting.registerContentScripts` descriptor. */
@@ -60,6 +64,41 @@ async function firstServiceWorker(context: BrowserContext): Promise<Worker> {
 }
 
 /**
+ * Launches a persistent Chromium context with the given unpacked extension
+ * loaded. Shared by the extension fixture and the no-op ablation baseline so
+ * both use identical browser flags.
+ */
+export async function launchPersistentExtension(
+  userDataDir: string,
+  extensionPath: string,
+): Promise<BrowserContext> {
+  return chromium.launchPersistentContext(userDataDir, {
+    channel: 'chromium',
+    headless: !isHeaded(),
+    viewport: { width: 1280, height: 800 },
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+  });
+}
+
+/** Launches a persistent Chromium context with no extension loaded. */
+export async function launchBareContext(userDataDir: string): Promise<BrowserContext> {
+  return chromium.launchPersistentContext(userDataDir, {
+    channel: 'chromium',
+    headless: !isHeaded(),
+    viewport: { width: 1280, height: 800 },
+  });
+}
+
+/** Closes a persistent context and removes its profile directory. */
+export async function closePersistentExtension(
+  context: BrowserContext,
+  userDataDir: string,
+): Promise<void> {
+  await context.close();
+  rmSync(userDataDir, { recursive: true, force: true });
+}
+
+/**
  * The extension test fixture. It replaces Playwright's `context` with a
  * persistent Chromium context that has the unpacked build loaded, then exposes
  * the worker and its extension id.
@@ -70,17 +109,31 @@ export const test = base.extend<ExtensionFixtures>({
   // eslint-disable-next-line no-empty-pattern
   context: async ({}, use) => {
     const userDataDir = mkdtempSync(join(tmpdir(), 'devtoolwidget-e2e-'));
-    const context = await chromium.launchPersistentContext(userDataDir, {
-      channel: 'chromium',
-      headless: !isHeaded(),
-      viewport: { width: 1280, height: 800 },
-      args: [`--disable-extensions-except=${EXTENSION_PATH}`, `--load-extension=${EXTENSION_PATH}`],
-    });
+    const context = await launchPersistentExtension(userDataDir, EXTENSION_PATH);
     try {
       await use(context);
     } finally {
-      await context.close();
-      rmSync(userDataDir, { recursive: true, force: true });
+      await closePersistentExtension(context, userDataDir);
+    }
+  },
+  // eslint-disable-next-line no-empty-pattern
+  noopContext: async ({}, use) => {
+    const userDataDir = mkdtempSync(join(tmpdir(), 'devtoolwidget-noop-'));
+    const context = await launchPersistentExtension(userDataDir, NOOP_EXTENSION_PATH);
+    try {
+      await use(context);
+    } finally {
+      await closePersistentExtension(context, userDataDir);
+    }
+  },
+  // eslint-disable-next-line no-empty-pattern
+  bareContext: async ({}, use) => {
+    const userDataDir = mkdtempSync(join(tmpdir(), 'devtoolwidget-bare-'));
+    const context = await launchBareContext(userDataDir);
+    try {
+      await use(context);
+    } finally {
+      await closePersistentExtension(context, userDataDir);
     }
   },
   extensionId: async ({ context }, use) => {

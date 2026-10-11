@@ -7,6 +7,13 @@ export const REPO_ROOT = resolve(import.meta.dirname, '..', '..');
 /** Unpacked Chromium build the Playwright harness loads (see `pnpm build`). */
 export const EXTENSION_PATH = resolve(REPO_ROOT, '.output', 'chrome-mv3');
 
+/**
+ * Minimal no-op MV3 extension (a single no-op `document_start` content script)
+ * used by the `noop-content` ablation series to measure the fixed cost of
+ * injecting any content script. Not part of the production build.
+ */
+export const NOOP_EXTENSION_PATH = resolve(REPO_ROOT, 'tests', 'benchmarks', 'noop-extension');
+
 /** Port the bad-site fixture listens on, taken from the server's own default. */
 export const FIXTURE_PORT = DEFAULT_PORT;
 

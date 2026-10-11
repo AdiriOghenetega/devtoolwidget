@@ -10,6 +10,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '.wxt/**',
       '.output/**',
+      '.output-profile/**',
       'dist/**',
       'coverage/**',
       'tests/architecture/fixtures/**',

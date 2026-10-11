@@ -20,6 +20,8 @@
     "e2e": "pnpm build && playwright test --config tests/e2e/playwright.config.ts",
     "e2e:headed": "pnpm build && playwright test --config tests/e2e/playwright.config.ts --headed",
     "e2e:install": "playwright install chromium",
+    "bench:bundle": "node tests/benchmarks/bundle-composition.mjs",
+    "bench:profile": "node tests/benchmarks/profile-content.mjs",
     "deps:check": "depcruise src --config .dependency-cruiser.cjs",
     "size": "size-limit",
     "postinstall": "wxt prepare",
