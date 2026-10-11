@@ -163,7 +163,10 @@ export function createOverviewStore(): OverviewStore {
         applySnapshot(message.payload);
         return;
       }
-      applyEvent(message.payload);
+      if (message.type === 'panel.delta') {
+        applyEvent(message.payload);
+      }
+      // `panel.agentConfig` is consumed by the content script, not the store.
     },
     setConnection(status) {
       connection.value = status;

@@ -47,6 +47,8 @@ export interface ConnectOptions {
 export interface AgentConnection {
   readonly nonce: string;
   request(command: CommandInput): Promise<Result<ResultMessage, BridgeError>>;
+  /** Sends a message to the agent without expecting a reply (e.g. `agent.config`). */
+  send(message: unknown): void;
   /** Subscribes to capture events the agent pushes (e.g. `event.batch`). */
   onEvent(handler: (message: EventMessage) => void): () => void;
   dispose(): void;
@@ -140,6 +142,9 @@ function createConnection(
       return () => {
         eventHandlers.delete(handler);
       };
+    },
+    send(message) {
+      port.postMessage(message);
     },
     dispose() {
       port.onmessage = null;

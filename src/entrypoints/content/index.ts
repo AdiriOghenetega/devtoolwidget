@@ -1,8 +1,9 @@
-import { h, render } from 'preact';
+﻿import { h, render } from 'preact';
 import { z } from 'zod';
 import { browser } from 'wxt/browser';
-import { createIdFactory, type ActionRef } from '../../core';
+import { createIdFactory, type ActionRef, type AgentConfig } from '../../core';
 import { connectAgentBridge } from '../../capture/bridge';
+import { createAgentConfig } from '../../capture/bridge/agent-config';
 import { PANEL_PORT_NAME } from '../../capture/pipeline';
 import { createStoragePort, type BrowserApi } from '../../platform/chrome';
 import {
@@ -124,12 +125,28 @@ export default defineContentScript({
       mount,
     );
 
+    // Runtime configuration relay (G13): the worker pushes the config on the panel
+    // port; it is stored here and forwarded to the agent over the committed bridge.
+    let latestConfig: AgentConfig | undefined;
+    let agentChannel: { send(message: unknown): void } | undefined;
+    const pushConfig = (): void => {
+      if (agentChannel !== undefined && latestConfig !== undefined) {
+        agentChannel.send(createAgentConfig(latestConfig));
+      }
+    };
+
     port.onMessage.addListener((message: unknown) => {
       const parsed = parsePanelMessage(message);
-      if (parsed.ok) {
-        store.applyPanelMessage(parsed.value);
-        store.setConnection('connected');
+      if (!parsed.ok) {
+        return;
       }
+      if (parsed.value.type === 'panel.agentConfig') {
+        latestConfig = parsed.value.payload;
+        pushConfig();
+        return;
+      }
+      store.applyPanelMessage(parsed.value);
+      store.setConnection('connected');
     });
     port.onDisconnect.addListener(() => {
       store.setConnection('disconnected');
@@ -150,6 +167,8 @@ export default defineContentScript({
         dispose = () => {
           connection.value.dispose();
         };
+        agentChannel = connection.value;
+        pushConfig();
         connection.value.onEvent((message) => {
           void browser.runtime.sendMessage(message).catch(() => undefined);
         });
