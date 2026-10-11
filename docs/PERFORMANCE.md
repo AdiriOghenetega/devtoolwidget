@@ -41,34 +41,38 @@ each merge:
 ## Benchmark: added main-thread time during load
 
 - **Spec:** `tests/e2e/specs/benchmark.spec.ts`.
-- **Method:** load the fixture page (`/`) **7 iterations** in (a) a plain Chromium
-  persistent context with **no extension** and (b) the extension context, one
-  warm-up each, and read `PerformanceNavigationTiming.duration` for each load.
-  Compare **medians**, and report the min–max spread.
+- **Method:** the **same extension-enabled context** is used for both series. Each
+  iteration opens a page, enables CDP `Performance`, reads the cumulative
+  `TaskDuration` metric, navigates to the fixture (`/`), waits for `load`, and reads
+  `TaskDuration` again; the per-load cost is the delta (CDP durations are seconds).
+  Series **inactive** runs with the site scripts **not registered** (access not
+  granted); series **active** runs after `registerExtensionScripts` (access granted).
+  **N = 30** iterations each, one warm-up each; medians and interquartile ranges are
+  reported. The measured quantity is main-thread task time, not navigation duration.
 - **Command:** `pnpm exec playwright test --config tests/e2e/playwright.config.ts benchmark`.
 
-**Result (this machine, n=7):**
+**Result (platform `win32`, laptop i7-8565U, n=30, metric `TaskDuration`):**
 
-|                       | median      | spread (max−min) |
-| --------------------- | ----------- | ---------------- |
-| without extension     | 145.3 ms    | 49.8 ms          |
-| with extension        | 220.2 ms    | 89.5 ms          |
-| **overhead (median)** | **74.9 ms** |                  |
+| series                           | median      | IQR (q3−q1) |
+| -------------------------------- | ----------- | ----------- |
+| inactive (no site scripts)       | 113.4 ms    | 7.3 ms      |
+| active (site scripts registered) | 208.0 ms    | 13.9 ms     |
+| **overhead (median)**            | **94.6 ms** |             |
 
-**Honest verdict:** the added main-thread time is **~75 ms**, which **misses the
-PRD target of 50 ms**. The spread (±50–90 ms) is large because the machine is a
-loaded laptop and the fixture itself is not a steady-state page, so treat 75 ms as
-an order-of-magnitude, to be re-measured on a quiet CI runner.
+**Honest verdict:** the added main-thread task time is **~95 ms**, which **misses
+the PRD target of 50 ms**. The IQRs are tight (7–14 ms), so this CDP-based method is
+much less noisy than the previous `navigation.duration` approach and the number is
+reliable on this machine; re-measure on the CI runner to confirm.
 
 ### Gating policy
 
 - **Hard-gated in CI (deterministic):** `pnpm size` (above) and the memory check
   (below).
 - **Benchmark: relative threshold, report-only spirit.** The spec asserts
-  `extendedMedian <= baselineMedian * 3 + 50 ms` — a generous guard that fails
-  only on a catastrophic regression. Runtime timings on shared runners are noisy,
-  so a tight absolute gate would be flaky; the numbers are logged
-  (`[bench] …`) and should be trended, not hard-gated.
+  `activeMedian <= inactiveMedian * 3 + 50 ms` — a generous guard that fails only on
+  a catastrophic regression. Runtime timings on shared runners are noisy, so a tight
+  absolute gate would be flaky; the numbers are logged (`[bench] …`) and should be
+  trended, not hard-gated.
 
 ## Memory under an event flood
 
@@ -99,13 +103,15 @@ Inspected hot-path candidates and the outcome:
   into a small buffer, reconciled per request; not a per-event cost.
 
 **No before/after is claimed**: the profiling pass identified candidates but did
-not demonstrate a change large enough to report against the ~75 ms aggregate, so
-none was merged. The plan for closing the PRD gap is below.
+not demonstrate a change large enough to report against the ~95 ms aggregate, so
+none was merged. The baseline is now the CDP `TaskDuration` measurement above; the
+plan below measures each change against it.
 
-## Plan to close the ~25 ms gap (75 ms → ≤ 50 ms)
+## Plan to close the ~45 ms gap (95 ms → ≤ 50 ms)
 
-Ordered, cheapest first, each measured with the benchmark above (medians, n≥15, on
-a quiet runner) before/after:
+The baseline is now measured with the CDP method above; optimisation starts from
+this number. Ordered, cheapest first, each measured before/after (medians and IQRs,
+n=30) with the same spec:
 
 1. **`redactUrl` fast path** (skip `new URL` when there is no query/userinfo) and a
    `redactString` fast path (skip the two regexes when the string has no `e`/`B`).
