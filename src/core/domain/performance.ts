@@ -29,3 +29,9 @@ export interface LongTask {
   readonly name?: string;
   readonly blockingDuration?: Millis;
 }
+
+/** A memory reading used to detect a growth trend (PRD R16). */
+export interface MemorySample {
+  readonly at: Millis;
+  readonly usedBytes: number;
+}
