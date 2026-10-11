@@ -1,9 +1,10 @@
 import { toBytes, toMillis, toTabId } from '../domain/brands';
 import type { ConsoleEntry, ConsoleKind, ConsoleLevel } from '../domain/console';
 import type { NetworkEntry } from '../domain/network';
-import type { LongTask, VitalMetric } from '../domain/performance';
+import type { LongTask, MemorySample, VitalMetric } from '../domain/performance';
 import type { PageSnapshot } from '../domain/snapshot';
 import type { StorageAreaUsage, StorageSummary } from '../domain/storage';
+import type { ImageSample, ResourceSample } from '../performance/derive';
 
 /** Options accepted by {@link PageSnapshotBuilder.network}. */
 export interface NetworkEntryOptions {
@@ -38,6 +39,10 @@ export class PageSnapshotBuilder {
   readonly #console: ConsoleEntry[] = [];
   readonly #vitals: VitalMetric[] = [];
   readonly #longTasks: LongTask[] = [];
+  readonly #resources: ResourceSample[] = [];
+  readonly #images: ImageSample[] = [];
+  readonly #memory: MemorySample[] = [];
+  #withData = false;
   #storage: StorageSummary = { areas: [] };
   #tabId = toTabId(1);
   #url = 'https://page.test/';
@@ -111,6 +116,27 @@ export class PageSnapshotBuilder {
     return this;
   }
 
+  /** Adds render-blocking / resource samples (enables R08). */
+  resources(entries: readonly ResourceSample[]): this {
+    this.#withData = true;
+    this.#resources.push(...entries);
+    return this;
+  }
+
+  /** Adds image samples (enables R15). */
+  images(entries: readonly ImageSample[]): this {
+    this.#withData = true;
+    this.#images.push(...entries);
+    return this;
+  }
+
+  /** Adds memory samples (enables R16). */
+  memory(samples: readonly MemorySample[]): this {
+    this.#withData = true;
+    this.#memory.push(...samples);
+    return this;
+  }
+
   build(): PageSnapshot {
     return {
       tabId: this.#tabId,
@@ -121,6 +147,8 @@ export class PageSnapshotBuilder {
       vitals: [...this.#vitals],
       longTasks: [...this.#longTasks],
       storage: this.#storage,
+      ...(this.#withData ? { resources: [...this.#resources], images: [...this.#images] } : {}),
+      ...(this.#withData ? { memory: [...this.#memory] } : {}),
     };
   }
 }
