@@ -50,6 +50,14 @@ const exportReportCommandSchema = envelope(
   z.object({ format: exportFormatSchema }),
 );
 const pingCommandSchema = envelope('command.ping', z.object({}));
+const grantAccessCommandSchema = envelope(
+  'command.grantAccess',
+  z.object({ origin: z.string().exactOptional() }),
+);
+const revokeAccessCommandSchema = envelope(
+  'command.revokeAccess',
+  z.object({ origin: z.string().exactOptional() }),
+);
 
 const commandMessageSchemas = [
   clearStorageCommandSchema,
@@ -59,6 +67,8 @@ const commandMessageSchemas = [
   getSnapshotCommandSchema,
   exportReportCommandSchema,
   pingCommandSchema,
+  grantAccessCommandSchema,
+  revokeAccessCommandSchema,
 ] as const;
 
 /** Every command message (PRD 8.2). */
@@ -85,6 +95,14 @@ const exportReportResultSchema = envelope(
   z.object({ format: exportFormatSchema, filename: z.string(), content: z.string() }),
 );
 const pingResultSchema = envelope('result.ping', z.object({ pong: z.boolean() }));
+const grantAccessResultSchema = envelope(
+  'result.grantAccess',
+  z.object({ origin: z.string(), status: z.enum(['granted', 'already-granted', 'denied']) }),
+);
+const revokeAccessResultSchema = envelope(
+  'result.revokeAccess',
+  z.object({ origin: z.string(), revoked: z.boolean() }),
+);
 
 const resultMessageSchemas = [
   clearStorageResultSchema,
@@ -94,6 +112,8 @@ const resultMessageSchemas = [
   getSnapshotResultSchema,
   exportReportResultSchema,
   pingResultSchema,
+  grantAccessResultSchema,
+  revokeAccessResultSchema,
 ] as const;
 
 /** Every command result message (PRD 8.2). */
@@ -159,6 +179,8 @@ const COMMAND_TYPES = [
   'command.getSnapshot',
   'command.exportReport',
   'command.ping',
+  'command.grantAccess',
+  'command.revokeAccess',
 ] as const;
 const RESULT_TYPES = [
   'result.clearStorage',
@@ -168,6 +190,8 @@ const RESULT_TYPES = [
   'result.getSnapshot',
   'result.exportReport',
   'result.ping',
+  'result.grantAccess',
+  'result.revokeAccess',
 ] as const;
 
 export const EVENT_MESSAGE_TYPES: ReadonlySet<string> = new Set(EVENT_TYPES);
