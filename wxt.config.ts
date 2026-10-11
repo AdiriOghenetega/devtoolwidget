@@ -28,5 +28,16 @@ export default defineConfig({
       'commands',
       'sidePanel',
     ],
+    commands: {
+      'toggle-panel': {
+        suggested_key: { default: 'Ctrl+Shift+E' },
+        description: 'Toggle devToolWidget panel',
+      },
+      'clear-site-data': { description: 'Clear site data' },
+      'hard-reload': {
+        suggested_key: { default: 'Ctrl+Shift+R' },
+        description: 'Hard reload',
+      },
+    },
   },
 });

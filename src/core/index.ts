@@ -7,6 +7,7 @@
  */
 export * from './buffers/ring-buffer';
 export * from './clear';
+export * from './commands';
 export * from './domain';
 export * from './export';
 export * from './format/formatters';
