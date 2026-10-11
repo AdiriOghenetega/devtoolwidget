@@ -128,6 +128,12 @@ export default defineContentScript({
       agent.start();
     });
 
+    // Validated runtime configuration (G13): applied over the committed port,
+    // never from the window. A rejected message applies nothing.
+    bridge.onConfig((message) => {
+      agent?.applyConfig(message.config);
+    });
+
     // MAIN-world content scripts have no `ctx`; tear the agent down on unload.
     window.addEventListener(
       'pagehide',

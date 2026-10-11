@@ -1,4 +1,11 @@
-import { toMillis, type CaptureBatch, type CaptureEvent } from '../../core';
+import {
+  toMillis,
+  type AgentConfig,
+  type AgentRedactionRule,
+  type CaptureBatch,
+  type CaptureEvent,
+  type RedactionRule,
+} from '../../core';
 import type { ClockPort } from '../../platform/ports';
 import {
   ConsoleCollector,
@@ -65,6 +72,23 @@ export interface CaptureAgentOptions {
   readonly maxBuffered?: number;
   readonly createId?: () => string;
   readonly methods?: readonly ConsoleMethod[];
+}
+
+/** Compiles validated redaction rules, skipping an invalid pattern. */
+function compileRedactionRules(rules: readonly AgentRedactionRule[]): RedactionRule[] {
+  const compiled: RedactionRule[] = [];
+  for (const rule of rules) {
+    try {
+      compiled.push({
+        name: rule.name,
+        pattern: new RegExp(rule.pattern, 'g'),
+        ...(rule.replacement === undefined ? {} : { replacement: rule.replacement }),
+      });
+    } catch {
+      // Skip an invalid pattern rather than throwing (never throw from config).
+    }
+  }
+  return compiled;
 }
 
 function toLongTask(entry: ResourceEntryLike): {
@@ -165,6 +189,22 @@ export class CaptureAgent {
     this.#performance.start();
     this.#observeLongTasks();
     this.#installNavigation();
+  }
+
+  /**
+   * Applies a validated runtime configuration atomically (G13): capture level,
+   * body-capture flag, user redaction rules and latency simulation. Invalid
+   * redaction patterns are skipped, never thrown, so a bad rule cannot break
+   * capture. Called only from the bridge's guarded `agent.config` handler.
+   */
+  applyConfig(config: AgentConfig): void {
+    const rules = compileRedactionRules(config.redactionRules);
+    this.#network.setCaptureOptions({
+      headers: config.captureLevel !== 'minimal',
+      body: config.captureLevel !== 'minimal' && config.bodyCapture,
+    });
+    this.#network.setLatency(config.latencyMs);
+    this.#network.setRedactionRules(rules);
   }
 
   /** Restores every patched surface and flushes the final batch. */

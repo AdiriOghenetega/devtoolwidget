@@ -1,9 +1,14 @@
 import { z } from 'zod';
 import {
+  AGENT_CONFIG_MESSAGE,
   BRIDGE_ACK_MESSAGE,
   BRIDGE_CHANNEL,
   BRIDGE_COMMIT_MESSAGE,
   HANDSHAKE_MESSAGE,
+  MAX_AGENT_LATENCY_MS,
+  MAX_AGENT_REDACTION_RULES,
+  MAX_AGENT_RULE_NAME_LENGTH,
+  MAX_AGENT_RULE_PATTERN_LENGTH,
   MAX_BRIDGE_NONCE_LENGTH,
 } from '../core';
 
@@ -39,3 +44,29 @@ export const commitSchema = z.strictObject({
 export type HandshakeMessage = z.infer<typeof handshakeSchema>;
 export type AckMessage = z.infer<typeof ackSchema>;
 export type CommitMessage = z.infer<typeof commitSchema>;
+
+/** The runtime configuration payload the agent applies (G13). */
+export const agentConfigPayloadSchema = z.strictObject({
+  captureLevel: z.enum(['minimal', 'standard', 'deep']),
+  bodyCapture: z.boolean(),
+  redactionRules: z
+    .array(
+      z.strictObject({
+        name: z.string().min(1).max(MAX_AGENT_RULE_NAME_LENGTH),
+        pattern: z.string().min(1).max(MAX_AGENT_RULE_PATTERN_LENGTH),
+        replacement: z.string().max(MAX_AGENT_RULE_PATTERN_LENGTH).exactOptional(),
+      }),
+    )
+    .max(MAX_AGENT_REDACTION_RULES)
+    .readonly(),
+  latencyMs: z.number().int().min(0).max(MAX_AGENT_LATENCY_MS),
+});
+
+/** The `agent.config` bootstrap message, accepted only over the committed port. */
+export const agentConfigSchema = z.strictObject({
+  channel: z.literal(BRIDGE_CHANNEL),
+  message: z.literal(AGENT_CONFIG_MESSAGE),
+  config: agentConfigPayloadSchema,
+});
+
+export type AgentConfigMessage = z.infer<typeof agentConfigSchema>;

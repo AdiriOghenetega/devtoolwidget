@@ -1,4 +1,6 @@
+import type { AgentConfigMessage } from '../../protocol';
 import { createAck, parseCommit, parseHandshake } from './handshake';
+import { parseAgentConfig } from './agent-config';
 
 /** Minimal port surface the agent needs (structurally satisfied by MessagePort). */
 export interface AgentPort {
@@ -38,6 +40,12 @@ export interface AgentBridge {
    * here so no batch is produced before there is a committed port.
    */
   onConnect(handler: () => void): () => void;
+  /**
+   * Subscribes to validated `agent.config` messages. They are accepted only on
+   * the committed secure port (never from the window), and a rejected message
+   * invokes no handler, so the agent keeps its last safe config (G13).
+   */
+  onConfig(handler: (message: AgentConfigMessage) => void): () => void;
   /** Sends a protocol message over the committed port. No-op before commit. */
   send(message: unknown): void;
   dispose(): void;
@@ -66,6 +74,7 @@ export function installAgentBridge(options: AgentBridgeOptions): AgentBridge {
   let tentative: AgentPort | undefined;
   let port: AgentPort | undefined;
   const connectHandlers = new Set<() => void>();
+  const configHandlers = new Set<(message: AgentConfigMessage) => void>();
 
   const listener = (event: MessageEvent): void => {
     if (committed) {
@@ -98,6 +107,15 @@ export function installAgentBridge(options: AgentBridgeOptions): AgentBridge {
           handler();
         }
         connectHandlers.clear();
+        return;
+      }
+      if (committed) {
+        const config = parseAgentConfig(messageEvent.data);
+        if (config.ok) {
+          for (const handler of [...configHandlers]) {
+            handler(config.value);
+          }
+        }
       }
     };
     candidate.postMessage(createAck(expected));
@@ -122,6 +140,12 @@ export function installAgentBridge(options: AgentBridgeOptions): AgentBridge {
         connectHandlers.delete(handler);
       };
     },
+    onConfig(handler) {
+      configHandlers.add(handler);
+      return () => {
+        configHandlers.delete(handler);
+      };
+    },
     send(message) {
       if (committed) {
         port?.postMessage(message);
@@ -130,6 +154,7 @@ export function installAgentBridge(options: AgentBridgeOptions): AgentBridge {
     dispose() {
       options.target.removeEventListener('message', listener, true);
       connectHandlers.clear();
+      configHandlers.clear();
     },
   };
 }
