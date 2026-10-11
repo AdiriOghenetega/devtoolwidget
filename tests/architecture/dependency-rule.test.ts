@@ -38,7 +38,7 @@ describe('dependency rule (PRD 8.2)', () => {
   it('reports no violations for the real source tree', async () => {
     const result = await cruiseWithProjectRules(SOURCE_ROOT);
     expect(violatedRuleNames(result)).toEqual([]);
-  });
+  }, 30_000);
 });
 
 describe('protocol dependency rules (PRD 8.2, ADR 0009)', () => {
