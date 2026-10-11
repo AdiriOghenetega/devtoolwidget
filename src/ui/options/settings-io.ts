@@ -1,4 +1,5 @@
-import { err, migrateSettings, ok, type Result, type Settings } from '../../core';
+﻿import { err, ok, type Result, type Settings } from '../../core';
+import { migrateSettings } from '../../protocol';
 
 /** Why an import failed. */
 export interface SettingsIoError {

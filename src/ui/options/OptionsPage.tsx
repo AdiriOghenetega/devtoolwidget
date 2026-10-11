@@ -1,6 +1,7 @@
-import type { JSX } from 'preact';
+﻿import type { JSX } from 'preact';
 import { useState } from 'preact/hooks';
-import { migrateSettings, type CaptureLevel, type Settings, type Theme } from '../../core';
+import { type CaptureLevel, type Settings, type Theme } from '../../core';
+import { migrateSettings } from '../../protocol';
 import { t } from '../i18n';
 import { Button } from '../design-system/primitives/Button';
 import { Checkbox } from '../design-system/primitives/Checkbox';
@@ -89,7 +90,7 @@ export function OptionsPage({
         <ul>
           {Object.entries(draft.perOriginProfiles).map(([origin, profile]) => (
             <li key={origin}>
-              <span>{origin}</span> — {profile.captureLevel}
+              <span>{origin}</span> â€” {profile.captureLevel}
               <Button
                 onClick={() => {
                   setDraft({

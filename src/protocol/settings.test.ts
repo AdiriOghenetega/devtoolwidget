@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_THRESHOLDS } from '../domain/constants';
 import {
   DEFAULT_SETTINGS,
+  DEFAULT_THRESHOLDS,
   SETTINGS_SCHEMA_VERSION,
   applyThresholdOverrides,
   decideFirstRun,
-  migrateSettings,
   resolveThresholds,
-} from './index';
+} from '../core';
+import { migrateSettings } from './settings';
 
 describe('settings schema defaults', () => {
   it('uses safe defaults', () => {

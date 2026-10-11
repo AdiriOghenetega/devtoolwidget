@@ -3,8 +3,8 @@ import {
   type FirstRunDecision,
   type InstalledReason,
   type Result,
-  type SettingsError,
 } from '../../core';
+import type { SettingsError } from '../../protocol';
 import type { PlatformError } from '../../platform/ports';
 import type { SettingsService } from '../settings/settings-service';
 
