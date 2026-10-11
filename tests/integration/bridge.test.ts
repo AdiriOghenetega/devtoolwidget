@@ -15,6 +15,14 @@ function flush(): Promise<void> {
   });
 }
 
+/** Waits until `predicate` holds, so async port delivery is not a race. */
+async function until(predicate: () => boolean, timeoutMs = 2_000): Promise<void> {
+  const start = Date.now();
+  while (!predicate() && Date.now() - start < timeoutMs) {
+    await flush();
+  }
+}
+
 /**
  * A deterministic window that models capture-before-bubble dispatch and port
  * transfer, so the two bridge halves can be integrated without a real browser.
@@ -89,7 +97,7 @@ describe('agent bridge handshake and ping', () => {
     if (!connection.ok) {
       return;
     }
-    await flush();
+    await until(() => agent.connected);
     expect(agent.connected).toBe(true);
     expect(connection.value.nonce).toBe(agent.nonce);
 
@@ -135,14 +143,15 @@ describe('agent bridge handshake and ping', () => {
     // its branch (this is what a too-short retry window does at document_start).
     const first = new MessageChannel();
     window.postMessage(createHandshake('nonce-1'), '*', [first.port2]);
-    await flush();
+    await until(() => agent.nonce === 'nonce-1');
     first.port1.close();
 
     // Second attempt: a fresh channel the content script is still waiting on.
     const second = new MessageChannel();
     window.postMessage(createHandshake('nonce-2'), '*', [second.port2]);
+    await until(() => agent.nonce === 'nonce-2');
     second.port1.postMessage(createCommit('nonce-2'));
-    await flush();
+    await until(() => agent.connected);
 
     expect(agent.connected).toBe(true);
     expect(agent.nonce).toBe('nonce-2');
