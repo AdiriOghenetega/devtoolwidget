@@ -8,6 +8,7 @@
 export * from './buffers/ring-buffer';
 export * from './clear';
 export * from './domain';
+export * from './export';
 export * from './format/formatters';
 export * from './ids/id';
 export * from './insights';
