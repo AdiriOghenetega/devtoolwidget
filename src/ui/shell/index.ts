@@ -6,7 +6,6 @@ export * from './Shell';
 export * from './ShortcutCheatSheet';
 export * from './Widget';
 export * from './WidgetPanel';
-export * from './geometry';
 export * from './mode';
 export * from './panel-loader';
 export * from './persistence';

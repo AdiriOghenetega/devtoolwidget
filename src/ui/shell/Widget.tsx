@@ -1,6 +1,6 @@
 import type { JSX } from 'preact';
 import type { OverviewStore } from '../state';
-import { Shell, type LoadPanel } from './Shell';
+import { Shell, type LoadPanel, type ShellControlsRef } from './Shell';
 import type { ShellPersistence } from './persistence';
 
 /** Props for {@link Widget}. */
@@ -10,6 +10,10 @@ export interface WidgetProps {
   readonly persistence: ShellPersistence;
   readonly loadPanel: LoadPanel;
   readonly store: OverviewStore;
+  /** Opens the panel on mount when the first interaction handed off (ADR 0019). */
+  readonly initialOpen?: boolean;
+  /** Optional imperative controls the content script uses to re-open the panel. */
+  readonly controls?: ShellControlsRef;
 }
 
 /**
@@ -23,6 +27,8 @@ export function Widget({
   persistence,
   loadPanel,
   store,
+  initialOpen,
+  controls,
 }: WidgetProps): JSX.Element {
   return (
     <Shell
@@ -32,6 +38,8 @@ export function Widget({
       errorCount={store.consoleErrors.value}
       persistence={persistence}
       loadPanel={loadPanel}
+      {...(initialOpen === undefined ? {} : { initialOpen })}
+      {...(controls === undefined ? {} : { controls })}
     />
   );
 }

@@ -9,6 +9,9 @@ const CAPTURE_NONTEST_IMPORTS_ROOT = 'tests/architecture/fixtures/capture-nontes
 const CORE_IMPORTS_PROTOCOL_ROOT = 'tests/architecture/fixtures/core-imports-protocol/src';
 const PROTOCOL_IMPORTS_PLATFORM_ROOT = 'tests/architecture/fixtures/protocol-imports-platform/src';
 const PROTOCOL_IMPORTS_CORE_ROOT = 'tests/architecture/fixtures/protocol-imports-core/src';
+const CONTENT_IMPORTS_UI_ROOT = 'tests/architecture/fixtures/content-imports-ui/src';
+const CONTENT_IMPORTS_UI_DYNAMIC_ROOT =
+  'tests/architecture/fixtures/content-imports-ui-dynamic/src';
 const SOURCE_ROOT = 'src';
 
 async function cruiseWithProjectRules(root: string): Promise<ICruiseResult> {
@@ -75,6 +78,22 @@ describe('capture platform import rules (PRD 8.2, ADR 0003)', () => {
     const result = await cruiseWithProjectRules(CAPTURE_NONTEST_IMPORTS_ROOT);
     expect(violatedRuleNames(result)).toContain(
       'capture-must-not-import-platform-fakes-outside-tests',
+    );
+  });
+});
+
+describe('document_start content bootstrap rules (ADR 0019)', () => {
+  it('forbids a static ui import from the content entry', async () => {
+    const result = await cruiseWithProjectRules(CONTENT_IMPORTS_UI_ROOT);
+    expect(violatedRuleNames(result)).toContain(
+      'document-start-content-must-not-statically-import-ui',
+    );
+  });
+
+  it('allows a dynamic ui import from the content entry', async () => {
+    const result = await cruiseWithProjectRules(CONTENT_IMPORTS_UI_DYNAMIC_ROOT);
+    expect(violatedRuleNames(result)).not.toContain(
+      'document-start-content-must-not-statically-import-ui',
     );
   });
 });

@@ -11,21 +11,23 @@ Everything below is a wiring task; no new domain logic is implied.
 
 ## Status
 
-| Gap | Area                                  | Status                                                                                                                                                                                     |
-| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| G1  | Capture wiring                        | **Resolved** (Slice A, ADR 0013)                                                                                                                                                           |
-| G2  | Widget shell not mounted              | **Resolved** (Slice B)                                                                                                                                                                     |
-| G3  | Screens/stores not connected          | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C)                                                                                   |
-| G4  | Router handles `ping` only            | **Resolved** (Slice C) for hardReload/setThrottle/toggleDisableCache/getSnapshot/clearStorage/exportReport; setThrottle application deferred (G10)                                         |
-| G5  | Clear/snapshot/export                 | **Resolved** (Slice C)                                                                                                                                                                     |
-| G6  | Site-access registration              | **Resolved** (Slice D): the service is wired and reachable via `command.grantAccess`/`command.revokeAccess`; the optional-permission model and its UI are G12                              |
-| G7  | Bridge ack never received             | **Resolved** (Slice A, ADR 0013)                                                                                                                                                           |
-| G8  | Command reply envelope                | **Resolved** (Slice A, ADR 0013)                                                                                                                                                           |
-| G9  | Disable-cache DNR rule shape          | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                                                                     |
-| G10 | setThrottle application               | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                                                                   |
-| G11 | Agent bundle over PRD budget          | **Resolved** (ADR 0018): `agent.js` is 12.6 kB gz, enforced by `pnpm size`                                                                                                                 |
-| G12 | Optional host permission + options UI | Open: the manifest requires `<all_urls>` host access, so `grant` is `already-granted` and `revoke` cannot remove a required permission; no gesture-capable options page exists to drive it |
-| G13 | Agent runtime configuration           | **Resolved** (ADR 0018 amendment): the worker derives it from settings and relays it over the panel port to the agent's guarded `agent.config`; proven by `specs/agent-config.spec.ts`     |
+| Gap | Area                                     | Status                                                                                                                                                                                                                      |
+| --- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | Capture wiring                           | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                            |
+| G2  | Widget shell not mounted                 | **Resolved** (Slice B)                                                                                                                                                                                                      |
+| G3  | Screens/stores not connected             | **Resolved** for Overview + console/network/performance (Slice B); storage/snapshots tabs open (Slice C)                                                                                                                    |
+| G4  | Router handles `ping` only               | **Resolved** (Slice C) for hardReload/setThrottle/toggleDisableCache/getSnapshot/clearStorage/exportReport; setThrottle application deferred (G10)                                                                          |
+| G5  | Clear/snapshot/export                    | **Resolved** (Slice C)                                                                                                                                                                                                      |
+| G6  | Site-access registration                 | **Resolved** (Slice D): the service is wired and reachable via `command.grantAccess`/`command.revokeAccess`; the optional-permission model and its UI are G12                                                               |
+| G7  | Bridge ack never received                | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                            |
+| G8  | Command reply envelope                   | **Resolved** (Slice A, ADR 0013)                                                                                                                                                                                            |
+| G9  | Disable-cache DNR rule shape             | Open: the rule Chrome needs cannot be expressed by `NetworkRuleAction`                                                                                                                                                      |
+| G10 | setThrottle application                  | Open: the profile resolves and is echoed, but the soft delay is not applied to the agent                                                                                                                                    |
+| G11 | Agent bundle over PRD budget             | **Resolved** (ADR 0018): `agent.js` is 12.6 kB gz, enforced by `pnpm size`                                                                                                                                                  |
+| G12 | Optional host permission + options UI    | Open: the manifest requires `<all_urls>` host access, so `grant` is `already-granted` and `revoke` cannot remove a required permission; no gesture-capable options page exists to drive it                                  |
+| G13 | Agent runtime configuration              | **Resolved** (ADR 0018 amendment): the worker derives it from settings and relays it over the panel port to the agent's guarded `agent.config`; proven by `specs/agent-config.spec.ts`                                      |
+| G14 | Real ESM lazy UI chunk                   | Open: WXT inlines content-script dynamic imports, so the UI is deferred in _execution_ but not split; `content.js` is 60.03 kB gz (was 57.8 kB) and "content-only" overhead is unchanged (~+80 ms). See measurements below. |
+| G15 | Zod on the `document_start` content path | Open: the bootstrap alone is 40.27 kB gz, dominated by Zod; deferring the UI recovered ~0 of the ~77 ms content-script overhead. See measurements below.                                                                    |
 
 ## G1 — Collectors are not wired to the bridge or pipeline (RESOLVED, Slice A)
 
@@ -268,3 +270,53 @@ schemas), no runtime Zod in `capture/bridge` or `core` (the settings schemas mov
 agent budget and a dependency-cruiser rule bans runtime imports of Zod-backed
 protocol modules from the agent path. See ADR 0018. (The remaining agent issue is
 G13: runtime configuration.)
+
+## G14 — No real ESM lazy chunk for the content UI (OPEN)
+
+**Decision input, not started.** The lazy-mount PR (ADR 0019 amendment) deferred the
+UI mount, but WXT builds content scripts in IIFE lib mode and **inlines** dynamic
+imports, so the UI is not split into a separate chunk.
+
+Measurements (`docs/PERFORMANCE.md`, same CDP `TaskDuration` method):
+
+- `content-scripts/content.js` is a single file: **60.03 kB gz** (was 57.8 kB before
+  the deferral; the deferred code is still parsed).
+- Ablation `content-only` overhead: **+77.3 ms before, +81.9 / +80.3 ms after**
+  (two runs) — i.e. deferring the render recovered essentially **none** of the ~77 ms.
+
+The fix is WXT's documented manual ESM split: a custom WXT module that pre-builds the
+shell/panel as ESM (`formats: ['es']`) with code-splitting, lists the output under
+`web_accessible_resources`, and has the `document_start` bootstrap `import()` the
+runtime URL of that chunk on first interaction (see the `esm-content-script-ui`
+example). **Caveats to evaluate before adopting it:**
+
+- `web_accessible_resources` **exposes the bundle to pages**; the UI chunk is not
+  secret, but the exposure should be minimised (narrow `matches`, hashed names) and
+  `use_dynamic_url` should be evaluated (a per-load dynamic extension URL that pages
+  cannot learn).
+- It needs a second Vite build step and a dev-reload hook, i.e. more build machinery
+  than a plain entrypoint.
+
+Only this can make the deferred UI code _not loaded at all_ before the first
+interaction, which is the remaining lever for the content-script overhead.
+
+## G15 — Zod validates the `document_start` content path (OPEN)
+
+**Decision input, not started.** With the UI import removed entirely (build variant),
+the content bootstrap alone measures **40.27 kB gz** — far above the ADR 0019 ≤ 10 kB
+budget — and the `ZodError` / `invalid_type` markers are present; Preact and the
+platform adapters are absent. Zod enters via `parseMessage` (bridge), `parsePanelMessage`
+(panel port) and `parseCommandResponse` (`command.ping`).
+
+The content path currently validates every cross-context message at `document_start`,
+which is why the bootstrap cannot approach 10 kB. The preferred design (per the
+lazy-mount PR decision) is **not** to add more hand-written guards like the agent's
+(ADR 0018), but to **make the content script a relay**: it forwards `event.batch`
+payloads to the service worker with cheap **size and shape** checks, and the **service
+worker remains the single validating boundary** (it already parses batches with Zod).
+The panel-port and ping parsing would move behind the lazily loaded UI or be reduced to
+cheap checks. This is a security-model change and must keep the trust-boundary tests
+green (`tests/e2e/specs/bridge-security.spec.ts`, `tests/integration/bridge.test.ts`).
+
+Combined with G14, this is what the ≤ 10 kB bootstrap + ≤ 120 kB lazy-UI budget split
+depends on. Until then, `.size-limit.mjs` holds a temporary no-regression ratchet.

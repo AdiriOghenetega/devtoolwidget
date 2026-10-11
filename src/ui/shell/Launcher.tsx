@@ -1,14 +1,17 @@
 import type { JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { t } from '../i18n';
 import {
-  clampToViewport,
+  createDragTracker,
+  dragLauncherPoint,
+  dropLauncherPlacement,
   placementToPoint,
-  snapToEdge,
+  LAUNCHER_SIZE,
   type LauncherPlacement,
+  type Point,
   type Size,
   type Viewport,
-} from './geometry';
+} from '../../core';
+import { t } from '../i18n';
 
 /** Props for {@link Launcher}. */
 export interface LauncherProps {
@@ -19,25 +22,25 @@ export interface LauncherProps {
   readonly onPlacementChange?: (placement: LauncherPlacement) => void;
 }
 
-const DEFAULT_SIZE: Size = { width: 44, height: 44 };
-
 function currentViewport(viewport: Viewport | undefined): Viewport {
   return viewport ?? { width: globalThis.innerWidth, height: globalThis.innerHeight };
 }
 
-/** A draggable launcher that snaps to the nearest edge on release. */
+/**
+ * A draggable launcher that snaps to the nearest edge on release. The drag math
+ * is shared with the `document_start` vanilla launcher via `core/placement`
+ * (ADR 0019): no placement logic is duplicated here.
+ */
 export function Launcher({
   placement,
-  size = DEFAULT_SIZE,
+  size = LAUNCHER_SIZE,
   viewport,
   onOpen,
   onPlacementChange,
 }: LauncherProps): JSX.Element {
-  const [dragPoint, setDragPoint] = useState<
-    { readonly x: number; readonly y: number } | undefined
-  >();
-  const moved = useRef(false);
-  const pointRef = useRef({ x: 0, y: 0 });
+  const [dragPoint, setDragPoint] = useState<Point | undefined>();
+  const tracker = useRef(createDragTracker());
+  const pointRef = useRef<Point>({ x: 0, y: 0 });
 
   const restingPoint = placementToPoint(placement, currentViewport(viewport), size);
   const point = dragPoint ?? restingPoint;
@@ -53,19 +56,15 @@ export function Launcher({
       return;
     }
     const onMove = (event: MouseEvent): void => {
-      moved.current = true;
+      tracker.current.move();
       const vp = currentViewport(viewport);
-      const next = clampToViewport(
-        { x: event.clientX - size.width / 2, y: event.clientY - size.height / 2 },
-        vp,
-        size,
-      );
+      const next = dragLauncherPoint(event.clientX, event.clientY, vp, size);
       pointRef.current = next;
       setDragPoint(next);
     };
     const onUp = (): void => {
       const vp = currentViewport(viewport);
-      const snapped = snapToEdge(pointRef.current, vp, size);
+      const snapped = dropLauncherPlacement(pointRef.current, vp, size);
       setDragPoint(undefined);
       onPlacementChange?.(snapped);
     };
@@ -86,12 +85,12 @@ export function Launcher({
       style={{ left: `${String(point.x)}px`, top: `${String(point.y)}px` }}
       onMouseDown={(event) => {
         event.preventDefault();
-        moved.current = false;
+        tracker.current.begin();
         pointRef.current = point;
         setDragPoint(point);
       }}
       onClick={() => {
-        if (!moved.current) {
+        if (!tracker.current.moved) {
           onOpen?.();
         }
       }}

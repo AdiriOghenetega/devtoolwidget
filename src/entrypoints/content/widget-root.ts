@@ -1,3 +1,9 @@
+/**
+ * The isolated Shadow-DOM host for the in-page widget (PRD 8.1). It lives in the
+ * content entrypoint, not `ui`, so the `document_start` bootstrap never imports
+ * `ui` (ADR 0019). Pure DOM; no framework.
+ */
+
 /** Handle to the widget root mounted in a Shadow DOM. */
 export interface WidgetRoot {
   readonly host: HTMLElement;
@@ -6,9 +12,9 @@ export interface WidgetRoot {
 }
 
 /**
- * Creates and mounts the widget's Shadow-DOM root (PRD 8.1: the content script
- * hosts the widget root). Domain styling and components are added by the UI
- * layer later; this only establishes the isolated host.
+ * Creates and mounts the widget's Shadow-DOM root. Domain styling and components
+ * are added later by the lazily imported UI layer; this only establishes the
+ * isolated host and the bootstrap status output.
  */
 export function hostWidgetRoot(doc: Document = document): WidgetRoot {
   const host = doc.createElement('devtoolwidget-root');

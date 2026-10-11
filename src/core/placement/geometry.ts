@@ -1,3 +1,10 @@
+/**
+ * Pure placement and panel geometry (PRD FR-1). This lives in `core` so both the
+ * lazy Preact shell (`src/ui`) and the tiny `document_start` vanilla launcher
+ * (`src/entrypoints/content`) can share one implementation without the content
+ * bootstrap statically importing `ui` (ADR 0019). It uses no browser APIs.
+ */
+
 /** A point in viewport coordinates. */
 export interface Point {
   readonly x: number;
@@ -32,6 +39,9 @@ export interface LauncherPlacement {
   readonly edge: Edge;
   readonly offset: number;
 }
+
+/** The default launcher position: vertically centred on the right edge. */
+export const DEFAULT_LAUNCHER_PLACEMENT: LauncherPlacement = { edge: 'right', offset: 0.5 };
 
 /** How the panel is docked. */
 export type DockMode = 'left' | 'right' | 'bottom' | 'floating';
