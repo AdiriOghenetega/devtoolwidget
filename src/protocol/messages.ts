@@ -82,7 +82,7 @@ const toggleDisableCacheResultSchema = envelope(
 const getSnapshotResultSchema = envelope('result.getSnapshot', pageSnapshotSchema);
 const exportReportResultSchema = envelope(
   'result.exportReport',
-  z.object({ format: exportFormatSchema, filename: z.string() }),
+  z.object({ format: exportFormatSchema, filename: z.string(), content: z.string() }),
 );
 const pingResultSchema = envelope('result.ping', z.object({ pong: z.boolean() }));
 
