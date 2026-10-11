@@ -39,6 +39,8 @@ export interface NetworkMeta {
 /** A single captured network request (PRD section 9, FR-4). */
 export interface NetworkEntry {
   readonly id: string;
+  /** When the request started (used for duplicate detection windows). */
+  readonly startedAt?: Millis;
   readonly method: string;
   readonly url: string;
   /** HTTP status, or `null` when the request never completed. */

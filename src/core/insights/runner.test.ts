@@ -4,7 +4,7 @@ import type { Finding } from '../domain/finding';
 import type { InsightRule } from '../domain/insight';
 import { DEFAULT_THRESHOLDS } from '../domain/constants';
 import { aSnapshot } from './builders';
-import { ALL_INSIGHT_RULES } from './rules';
+import { ALL_INSIGHT_RULES } from './rules/index';
 import { dedupeFindings, rankFindings, runInsights } from './runner';
 import { stableFindingId } from './ids';
 
