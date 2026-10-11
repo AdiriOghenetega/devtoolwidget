@@ -6,15 +6,18 @@ import {
   COMMAND_MESSAGE_TYPES,
   COMMAND_RESPONSE_MESSAGE_TYPES,
   EVENT_MESSAGE_TYPES,
+  PANEL_MESSAGE_TYPES,
   RESULT_MESSAGE_TYPES,
   commandMessageSchema,
   commandResponseSchema,
   eventMessageSchema,
+  panelMessageSchema,
   protocolMessageSchema,
   resultMessageSchema,
   type CommandMessage,
   type CommandResponse,
   type EventMessage,
+  type PanelMessage,
   type ProtocolMessage,
   type ResultMessage,
 } from './messages';
@@ -102,4 +105,9 @@ export function parseResult(input: unknown): Result<ResultMessage, ProtocolError
  */
 export function parseCommandResponse(input: unknown): Result<CommandResponse, ProtocolError> {
   return parseEnvelope(commandResponseSchema, COMMAND_RESPONSE_MESSAGE_TYPES, input);
+}
+
+/** Parses a panel push message (`panel.snapshot` or `panel.delta`). Never throws. */
+export function parsePanelMessage(input: unknown): Result<PanelMessage, ProtocolError> {
+  return parseEnvelope(panelMessageSchema, PANEL_MESSAGE_TYPES, input);
 }
