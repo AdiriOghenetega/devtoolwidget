@@ -162,4 +162,33 @@ export function storedNetworkBodyPreviews(serviceWorker: Worker): Promise<string
   });
 }
 
+/** Reads the total stored capture events and the max dropped count per tab. */
+export function storedSessionStats(
+  serviceWorker: Worker,
+): Promise<{ readonly events: number; readonly dropped: number }> {
+  return serviceWorker.evaluate(async () => {
+    const api = (
+      globalThis as unknown as {
+        chrome: {
+          storage: { session: { get(keys: null): Promise<Record<string, unknown>> } };
+        };
+      }
+    ).chrome;
+    const stored = await api.storage.session.get(null);
+    let events = 0;
+    let dropped = 0;
+    for (const entry of Object.values(stored)) {
+      const session = (entry as { value?: { events?: readonly unknown[]; dropped?: unknown } })
+        .value;
+      if (Array.isArray(session?.events)) {
+        events += session.events.length;
+      }
+      if (typeof session?.dropped === 'number' && session.dropped > dropped) {
+        dropped = session.dropped;
+      }
+    }
+    return { events, dropped };
+  });
+}
+
 export { expect };
