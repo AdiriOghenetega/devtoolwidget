@@ -1,14 +1,13 @@
 import { err, ok, type Result } from '../../core';
 import { platformError, type PlatformError } from '../../platform/ports/errors';
-import {
-  PROTOCOL_VERSION,
-  parseMessage,
-  type CommandInput,
-  type ErrorMessage,
-  type EventMessage,
-  type ProtocolError,
-  type ProtocolMessage,
-  type ResultMessage,
+import { PROTOCOL_VERSION } from '../../protocol/version';
+import type {
+  CommandInput,
+  ErrorMessage,
+  EventMessage,
+  ProtocolError,
+  ProtocolMessage,
+  ResultMessage,
 } from '../../protocol';
 import type { AgentPort } from './agent-bridge';
 import { createCommit, createHandshake, createNonce, parseAck } from './handshake';
@@ -33,6 +32,12 @@ export interface ConnectOptions {
   readonly createId: () => string;
   readonly createChannel: () => MessageChannelLike;
   readonly createRandom: () => number;
+  /**
+   * Validates a port message. Injected so this module needs no runtime Zod
+   * import (ADR 0018); the content entrypoint passes the protocol's
+   * `parseMessage`.
+   */
+  readonly parseMessage: (input: unknown) => Result<ProtocolMessage, ProtocolError>;
   readonly timeoutMs?: number;
   readonly retryMs?: number;
   readonly maxAttempts?: number;
@@ -86,6 +91,7 @@ function createConnection(
   nonce: string,
   createId: () => string,
   timeoutMs: number,
+  parseMessage: (input: unknown) => Result<ProtocolMessage, ProtocolError>,
 ): AgentConnection {
   const pending = new Map<string, Pending>();
   const eventHandlers = new Set<(message: EventMessage) => void>();
@@ -161,7 +167,9 @@ export async function connectAgentBridge(
     if (await acked) {
       // Commit the agent to this port so the one it adopts is the one we hold.
       channel.port1.postMessage(createCommit(nonce));
-      return ok(createConnection(channel.port1, nonce, options.createId, timeoutMs));
+      return ok(
+        createConnection(channel.port1, nonce, options.createId, timeoutMs, options.parseMessage),
+      );
     }
   }
 

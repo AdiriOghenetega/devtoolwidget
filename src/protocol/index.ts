@@ -5,6 +5,7 @@
  * It may import `core` (payloads carry core domain data and return `Result`);
  * it must not import `platform`, `capture`, `ui` or `entrypoints`.
  */
+export * from './bridge';
 export * from './channel';
 export * from './errors';
 export * from './messages';
