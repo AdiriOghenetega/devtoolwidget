@@ -1,10 +1,56 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import type { ConsoleEntry } from '../domain/console';
 import type { Finding } from '../domain/finding';
 import { toMillis } from '../domain/brands';
 import { aSnapshot } from '../insights/builders';
-import { buildBundle, buildHar, buildMarkdown, harSchema } from './builders';
+import { buildBundle, buildHar, buildMarkdown } from './builders';
 import { redactExportInput, type ExportInput } from './redact-export';
+
+// Test-only HAR schema (kept out of `builders.ts` so `core`'s runtime graph, and
+// therefore the page-world agent bundle, pulls in no Zod — ADR 0018).
+const harSchema = z.object({
+  log: z.object({
+    version: z.literal('1.2'),
+    creator: z.object({ name: z.string(), version: z.string() }),
+    entries: z.array(
+      z.object({
+        startedDateTime: z.string(),
+        time: z.number(),
+        request: z.object({
+          method: z.string(),
+          url: z.string(),
+          httpVersion: z.string(),
+          headers: z.array(z.object({ name: z.string(), value: z.string() })),
+          queryString: z.array(z.object({ name: z.string(), value: z.string() })),
+          cookies: z.array(z.object({ name: z.string(), value: z.string() })),
+          headersSize: z.number(),
+          bodySize: z.number(),
+        }),
+        response: z.object({
+          status: z.number(),
+          statusText: z.string(),
+          httpVersion: z.string(),
+          headers: z.array(z.object({ name: z.string(), value: z.string() })),
+          content: z.object({ size: z.number(), mimeType: z.string() }),
+          redirectURL: z.string(),
+          headersSize: z.number(),
+          bodySize: z.number(),
+        }),
+        cache: z.object({}),
+        timings: z.object({
+          blocked: z.number(),
+          dns: z.number(),
+          connect: z.number(),
+          send: z.number(),
+          wait: z.number(),
+          receive: z.number(),
+          ssl: z.number(),
+        }),
+      }),
+    ),
+  }),
+});
 
 const secretUrl = 'https://api.test/cb?access_token=SECRET_URL';
 

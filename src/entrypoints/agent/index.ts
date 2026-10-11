@@ -1,6 +1,6 @@
 import { createIdFactory } from '../../core';
-import { PROTOCOL_VERSION } from '../../protocol';
-import { createClockPort } from '../../platform/chrome';
+import { PROTOCOL_VERSION } from '../../protocol/version';
+import { createClockPort } from '../../platform/chrome/clock';
 import { CaptureAgent, type CaptureTarget } from '../../capture/agent/capture-agent';
 import type { FetchLike, ObserverFactory } from '../../capture/network/network-collector';
 import { installAgentBridge } from '../../capture/bridge/agent-bridge';

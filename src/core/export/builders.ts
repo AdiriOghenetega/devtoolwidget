@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { formatBytes } from '../format/formatters';
 import type { RedactedExportInput } from './redact-export';
 
@@ -52,49 +51,11 @@ export interface Har {
   };
 }
 
-/** A Zod schema for the HAR 1.2 subset this module produces (used in tests). */
-export const harSchema = z.object({
-  log: z.object({
-    version: z.literal('1.2'),
-    creator: z.object({ name: z.string(), version: z.string() }),
-    entries: z.array(
-      z.object({
-        startedDateTime: z.string(),
-        time: z.number(),
-        request: z.object({
-          method: z.string(),
-          url: z.string(),
-          httpVersion: z.string(),
-          headers: z.array(z.object({ name: z.string(), value: z.string() })),
-          queryString: z.array(z.object({ name: z.string(), value: z.string() })),
-          cookies: z.array(z.object({ name: z.string(), value: z.string() })),
-          headersSize: z.number(),
-          bodySize: z.number(),
-        }),
-        response: z.object({
-          status: z.number(),
-          statusText: z.string(),
-          httpVersion: z.string(),
-          headers: z.array(z.object({ name: z.string(), value: z.string() })),
-          content: z.object({ size: z.number(), mimeType: z.string() }),
-          redirectURL: z.string(),
-          headersSize: z.number(),
-          bodySize: z.number(),
-        }),
-        cache: z.object({}),
-        timings: z.object({
-          blocked: z.number(),
-          dns: z.number(),
-          connect: z.number(),
-          send: z.number(),
-          wait: z.number(),
-          receive: z.number(),
-          ssl: z.number(),
-        }),
-      }),
-    ),
-  }),
-});
+/**
+ * A Zod schema for the HAR 1.2 subset this module produces. It is a **test-only**
+ * helper and lives in `export.test.ts`, not here, so that `core`'s runtime graph
+ * (and therefore the page-world agent bundle) pulls in no Zod (ADR 0018).
+ */
 
 function headersToHar(headers: RedactedExportInput['network'][number]['headers']): HarNameValue[] {
   if (headers === undefined) {

@@ -61,6 +61,17 @@ module.exports = {
       from: { path: 'src/capture/', pathNot: '\\.test\\.(ts|tsx)$' },
       to: { path: 'src/platform/fakes/' },
     },
+    {
+      name: 'agent-must-not-import-runtime-zod-modules',
+      severity: 'error',
+      comment:
+        'The agent entrypoint and the bridge must not import a Zod-backed protocol module at runtime (type-only imports are allowed), so the injected main-world agent stays under its 15 kB bundle budget (AGENTS.md section 6, ADR 0018). A `reachable` rule cannot target npm `zod` because `doNotFollow: node_modules` keeps it out of the graph, and it also matches type-only edges, so this direct runtime-only ban plus the `agent (main world)` size gate are the enforceable pair.',
+      from: { path: '^(src/entrypoints/agent/|src/capture/bridge/)' },
+      to: {
+        path: '^src/protocol/(payloads|messages|parse|errors|settings|bridge)\\.ts$',
+        dependencyTypesNot: ['type-only'],
+      },
+    },
   ],
   options: {
     tsPreCompilationDeps: true,

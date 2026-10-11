@@ -1,11 +1,6 @@
 import { z } from 'zod';
-import {
-  DEFAULT_SETTINGS,
-  migrateSettings,
-  type Result,
-  type Settings,
-  type SettingsError,
-} from '../../core';
+import { DEFAULT_SETTINGS, type Result, type Settings } from '../../core';
+import { migrateSettings, type SettingsError } from '../../protocol';
 import type { PlatformError, StoragePort } from '../../platform/ports';
 
 /** Storage key for the settings document. */

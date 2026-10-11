@@ -1,77 +1,80 @@
-import { z } from 'zod';
-import { err, ok, type Result } from '../../core';
+import {
+  BRIDGE_ACK_MESSAGE,
+  BRIDGE_CHANNEL,
+  BRIDGE_COMMIT_MESSAGE,
+  DEFAULT_NONCE_BYTES,
+  HANDSHAKE_MESSAGE,
+  MAX_BRIDGE_NONCE_LENGTH,
+  err,
+  ok,
+  type Result,
+} from '../../core';
 import { platformError, type PlatformError } from '../../platform/ports/errors';
+import type { AckMessage, CommitMessage, HandshakeMessage } from '../../protocol';
 
-/** Namespace for bridge bootstrap messages (PRD section 7). */
-export const BRIDGE_CHANNEL = 'devtoolwidget:bridge';
-/** One-time handshake message name. */
-export const HANDSHAKE_MESSAGE = 'handshake';
-/** Agent acknowledgement sent back over the freshly adopted port. */
-export const BRIDGE_ACK_MESSAGE = 'ack';
-/** Content acknowledgement that commits the agent to the adopted port. */
-export const BRIDGE_COMMIT_MESSAGE = 'commit';
-/** Nonce size in bytes. */
-export const DEFAULT_NONCE_BYTES = 16;
+/**
+ * Hand-written, strict guards for the three bridge bootstrap messages (ADR 0018).
+ *
+ * These messages are the only cross-context inputs the page-world agent sees, and
+ * its bundle budget forbids importing Zod. The guards are typed against the
+ * `z.infer` types of the source-of-truth schemas in `protocol/bridge.ts`, are
+ * strict (exact expected keys, primitive types, nonce length limits), and never
+ * throw. `capture/bridge/handshake.test.ts` asserts they always agree with those
+ * schemas over a shared corpus.
+ */
+export {
+  BRIDGE_ACK_MESSAGE,
+  BRIDGE_CHANNEL,
+  BRIDGE_COMMIT_MESSAGE,
+  DEFAULT_NONCE_BYTES,
+  HANDSHAKE_MESSAGE,
+};
 
-/** The one-time handshake: carries the nonce the transferred port is bound to. */
-export interface HandshakeMessage {
-  readonly channel: typeof BRIDGE_CHANNEL;
-  readonly message: typeof HANDSHAKE_MESSAGE;
-  readonly nonce: string;
+/** True when `value` is a non-array object with no unknown own enumerable keys. */
+function isStrictRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== 'channel' && key !== 'message' && key !== 'nonce') {
+      return false;
+    }
+  }
+  return true;
 }
 
-/** The agent's acknowledgement, echoing the nonce so the content script can verify. */
-export interface AckMessage {
-  readonly channel: typeof BRIDGE_CHANNEL;
-  readonly message: typeof BRIDGE_ACK_MESSAGE;
-  readonly nonce: string;
+/** True when `value` is a valid nonce: a non-empty string within the length cap. */
+function isNonce(value: unknown): value is string {
+  return typeof value === 'string' && value.length >= 1 && value.length <= MAX_BRIDGE_NONCE_LENGTH;
 }
 
-/** The content script's commit, confirming it received the ack on this port. */
-export interface CommitMessage {
-  readonly channel: typeof BRIDGE_CHANNEL;
-  readonly message: typeof BRIDGE_COMMIT_MESSAGE;
-  readonly nonce: string;
+function guard<TMessage>(
+  data: unknown,
+  message: string,
+  label: string,
+): Result<TMessage, PlatformError> {
+  if (!isStrictRecord(data)) {
+    return err(platformError('invalid-data', `Not a bridge ${label}`));
+  }
+  if (data.channel !== BRIDGE_CHANNEL || data.message !== message || !isNonce(data.nonce)) {
+    return err(platformError('invalid-data', `Not a bridge ${label}`));
+  }
+  return ok({ channel: BRIDGE_CHANNEL, message, nonce: data.nonce } as TMessage);
 }
-
-const handshakeSchema = z.object({
-  channel: z.literal(BRIDGE_CHANNEL),
-  message: z.literal(HANDSHAKE_MESSAGE),
-  nonce: z.string().min(1),
-});
-
-const ackSchema = z.object({
-  channel: z.literal(BRIDGE_CHANNEL),
-  message: z.literal(BRIDGE_ACK_MESSAGE),
-  nonce: z.string().min(1),
-});
-
-const commitSchema = z.object({
-  channel: z.literal(BRIDGE_CHANNEL),
-  message: z.literal(BRIDGE_COMMIT_MESSAGE),
-  nonce: z.string().min(1),
-});
 
 /** Validates untrusted window data as a handshake. Never throws. */
 export function parseHandshake(data: unknown): Result<HandshakeMessage, PlatformError> {
-  const parsed = handshakeSchema.safeParse(data);
-  return parsed.success
-    ? ok(parsed.data)
-    : err(platformError('invalid-data', 'Not a bridge handshake'));
+  return guard<HandshakeMessage>(data, HANDSHAKE_MESSAGE, 'handshake');
 }
 
 /** Validates untrusted window data as an ack. Never throws. */
 export function parseAck(data: unknown): Result<AckMessage, PlatformError> {
-  const parsed = ackSchema.safeParse(data);
-  return parsed.success ? ok(parsed.data) : err(platformError('invalid-data', 'Not a bridge ack'));
+  return guard<AckMessage>(data, BRIDGE_ACK_MESSAGE, 'ack');
 }
 
 /** Validates untrusted port data as a commit. Never throws. */
 export function parseCommit(data: unknown): Result<CommitMessage, PlatformError> {
-  const parsed = commitSchema.safeParse(data);
-  return parsed.success
-    ? ok(parsed.data)
-    : err(platformError('invalid-data', 'Not a bridge commit'));
+  return guard<CommitMessage>(data, BRIDGE_COMMIT_MESSAGE, 'commit');
 }
 
 /** Builds a handshake message for the given nonce. */

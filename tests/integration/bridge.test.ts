@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+﻿import { describe, expect, it } from 'vitest';
 import { installAgentBridge, type AgentWindow } from '../../src/capture/bridge/agent-bridge';
 import { connectAgentBridge, type ContentWindow } from '../../src/capture/bridge/content-bridge';
 import { createCommit, createHandshake } from '../../src/capture/bridge/handshake';
@@ -7,7 +7,7 @@ import { TabSessionRegistry } from '../../src/capture/session/session-registry';
 import { TabNetworkController } from '../../src/capture/network/tab-network-controller';
 import { aSnapshot, createIdFactory, ok, toTabId } from '../../src/core';
 import { createFakePorts } from '../../src/platform/fakes';
-import { PROTOCOL_VERSION } from '../../src/protocol';
+import { PROTOCOL_VERSION, parseMessage } from '../../src/protocol';
 
 /** Lets a delivered `MessageChannel` message be processed (port delivery is async). */
 function flush(): Promise<void> {
@@ -89,6 +89,7 @@ describe('agent bridge handshake and ping', () => {
       createId,
       createChannel: () => new MessageChannel(),
       createRandom: () => 0.5,
+      parseMessage,
       timeoutMs: 200,
       retryMs: 100,
       maxAttempts: 3,
@@ -139,11 +140,13 @@ describe('agent bridge handshake and ping', () => {
       expect(session.value?.agentConnected).toBe(true);
     }
 
-    // Agent hop over the transferred port.
-    const pong = await connection.value.request({ type: 'command.ping', payload: {} });
-    expect(pong.ok).toBe(true);
-    if (pong.ok) {
-      expect(pong.value.type).toBe('result.ping');
+    // Agent hop over the transferred port. The agent does not answer commands
+    // over the port (ADR 0018): the port carries capture events outward only, so
+    // a request times out rather than receiving a pong.
+    const noReply = await connection.value.request({ type: 'command.ping', payload: {} });
+    expect(noReply.ok).toBe(false);
+    if (!noReply.ok) {
+      expect(noReply.error.code).toBe('timeout');
     }
 
     connection.value.dispose();
@@ -181,6 +184,7 @@ describe('agent bridge handshake and ping', () => {
       createId: createIdFactory({ now: () => 1, random: () => 0 }),
       createChannel: () => new MessageChannel(),
       createRandom: () => 0.5,
+      parseMessage,
       timeoutMs: 200,
       retryMs: 100,
     });
@@ -195,7 +199,8 @@ describe('agent bridge handshake and ping', () => {
     });
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe('unsupported');
+      // No agent reply over the port (ADR 0018) -> the request times out.
+      expect(result.error.code).toBe('timeout');
     }
   });
 
@@ -206,6 +211,7 @@ describe('agent bridge handshake and ping', () => {
       createId: createIdFactory({ now: () => 1, random: () => 0 }),
       createChannel: () => new MessageChannel(),
       createRandom: () => 0.5,
+      parseMessage,
       timeoutMs: 50,
       retryMs: 10,
       maxAttempts: 2,

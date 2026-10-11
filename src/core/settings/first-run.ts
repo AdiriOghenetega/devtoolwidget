@@ -1,4 +1,4 @@
-import type { Settings } from './schema';
+﻿import type { Settings } from './types';
 
 /** Why the extension worker started (mirrors `runtime.onInstalled` reasons). */
 export type InstalledReason = 'install' | 'update' | 'startup' | 'unknown';
