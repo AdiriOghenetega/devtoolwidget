@@ -148,7 +148,7 @@ devtoolwidget/
   tests/           e2e/, fixtures/bad-site/, benchmarks/
   AGENTS.md        rules for AI assistants
 8.4 Data flow
-Page events, then main-world agent, then batched events over the secure port, then content script, then service worker session store (per tab), then widget UI via a long-lived port. Actions flow in reverse: UI sends a typed command, the service worker executes it through a platform port, and replies with a typed result.
+Page events, then main-world agent (the console, network and performance collectors), then a typed batch over the secure port: the agent batches capture events every 100 ms and sends one `event.batch` message carrying a batch sequence number, a cumulative dropped count and an array of typed entries (console, network, performance, storage). The content script forwards the batch, the service worker stamps the tab id and stores the typed entries in the per-tab session store, and the widget UI reads that store via a long-lived port (snapshot then deltas). Actions flow in reverse: UI sends a typed command, the service worker executes it through a platform port, and replies with a typed result or error envelope. See ADR 0013.
 8.5 Messaging and state
 • Every message has a type, a schema version, a correlation ID and a Zod schema. Commands return typed Result values; expected failures never throw.
 • UI state lives in signal stores per domain with derived selectors. Settings are persisted through the storage port with a schema version and explicit migrations.

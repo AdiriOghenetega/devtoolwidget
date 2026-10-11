@@ -7,11 +7,11 @@ fixture surface it exercises and its current status. The suite lives in
 
 ## Status legend
 
-- **smoke** — runs and must pass in CI.
+- **passing** — runs and must pass in CI.
 - **fixme** — written and type-checked, but marked `test.fixme` because the
   extension is not wired end to end yet. `test.fixme` is skipped, so it never
   fails the build. The blocker is named in the spec and in
-  [`INTEGRATION-GAPS.md`](./INTEGRATION-GAPS.md) (`G1`…`G6`).
+  [`INTEGRATION-GAPS.md`](./INTEGRATION-GAPS.md) (`G1`…`G8`).
 
 ## How to run
 
@@ -47,49 +47,51 @@ Its routing is pure and unit-tested in `server.test.ts` (runs under `pnpm test`)
 
 ## Matrix
 
-| FR    | Requirement               | Spec                  | Fixture routes                                   | Status | Blocker                                                                             |
-| ----- | ------------------------- | --------------------- | ------------------------------------------------ | ------ | ----------------------------------------------------------------------------------- |
-| —     | Harness / extension loads | `specs/smoke.spec.ts` | `/ok`, `/`                                       | smoke  | —                                                                                   |
-| FR-1  | Widget shell              | `specs/fr-01.spec.ts` | `/`                                              | fixme  | G2, G6                                                                              |
-| FR-2  | Overview screen           | `specs/fr-02.spec.ts` | `/`, `/slow`, `/status/500`                      | fixme  | G1, G3                                                                              |
-| FR-3  | Console capture           | `specs/fr-03.spec.ts` | `/` (Trigger error), `/app.js`                   | fixme  | G1                                                                                  |
-| FR-4  | Network capture           | `specs/fr-04.spec.ts` | `/slow`, `/status/404`, `/status/500`, `/big`    | fixme  | G1                                                                                  |
-| FR-5  | Performance capture       | `specs/fr-05.spec.ts` | `/huge.png`, `/blocking.js`                      | fixme  | G1                                                                                  |
-| FR-6  | Storage and cache         | `specs/fr-06.spec.ts` | `/app.js`, `/sw.js`                              | fixme  | G4, G5                                                                              |
-| FR-7  | Network conditions        | `specs/fr-07.spec.ts` | `/app.js`, `/nocache.js`                         | fixme  | G4                                                                                  |
-| FR-8  | Insights engine           | `specs/fr-08.spec.ts` | `/duplicate`, `/nocache.js`, `/big`, `/huge.png` | fixme  | G1, G3                                                                              |
-| FR-9  | Snapshots and comparison  | `specs/fr-09.spec.ts` | `/`, `/slow`                                     | fixme  | G5                                                                                  |
-| FR-10 | Export and share          | `specs/fr-10.spec.ts` | `/`                                              | fixme  | G5                                                                                  |
-| FR-11 | Settings and profiles     | `specs/fr-11.spec.ts` | `/`                                              | fixme  | G3                                                                                  |
-| FR-12 | Deep mode                 | `specs/fr-12.spec.ts` | `/`                                              | fixme  | G4                                                                                  |
-| FR-13 | Keyboard/accessibility    | `specs/fr-13.spec.ts` | `/`                                              | fixme  | G6                                                                                  |
-| FR-14 | Onboarding                | `specs/fr-14.spec.ts` | `/`                                              | fixme  | G3, G6                                                                              |
-| FR-15 | Browser support           | —                     | —                                                | n/a    | Out of scope: the suite is Chromium-only; Firefox coverage needs a separate runner. |
+| FR    | Requirement               | Spec                            | Fixture routes                                   | Status  | Blocker                                                                             |
+| ----- | ------------------------- | ------------------------------- | ------------------------------------------------ | ------- | ----------------------------------------------------------------------------------- |
+| —     | Harness / extension loads | `specs/smoke.spec.ts`           | `/ok`, `/`                                       | passing | —                                                                                   |
+| —     | Capture wiring (G1)       | `specs/capture.spec.ts`         | `/ok`                                            | passing | —                                                                                   |
+| —     | Bridge hardening (G7)     | `specs/bridge-security.spec.ts` | `/spy`                                           | passing | —                                                                                   |
+| FR-1  | Widget shell              | `specs/fr-01.spec.ts`           | `/`                                              | fixme   | G2, G6                                                                              |
+| FR-2  | Overview screen           | `specs/fr-02.spec.ts`           | `/`, `/slow`, `/status/500`                      | fixme   | G2, G3                                                                              |
+| FR-3  | Console capture           | `specs/fr-03.spec.ts`           | `/` (Trigger error), `/app.js`                   | fixme   | G2 (capture done in Slice A)                                                        |
+| FR-4  | Network capture           | `specs/fr-04.spec.ts`           | `/slow`, `/status/404`, `/status/500`, `/big`    | fixme   | G2 (capture done in Slice A)                                                        |
+| FR-5  | Performance capture       | `specs/fr-05.spec.ts`           | `/huge.png`, `/blocking.js`                      | fixme   | G2, vitals client                                                                   |
+| FR-6  | Storage and cache         | `specs/fr-06.spec.ts`           | `/app.js`, `/sw.js`                              | fixme   | G4, G5                                                                              |
+| FR-7  | Network conditions        | `specs/fr-07.spec.ts`           | `/app.js`, `/nocache.js`                         | fixme   | G4                                                                                  |
+| FR-8  | Insights engine           | `specs/fr-08.spec.ts`           | `/duplicate`, `/nocache.js`, `/big`, `/huge.png` | fixme   | G2, G3                                                                              |
+| FR-9  | Snapshots and comparison  | `specs/fr-09.spec.ts`           | `/`, `/slow`                                     | fixme   | G5                                                                                  |
+| FR-10 | Export and share          | `specs/fr-10.spec.ts`           | `/`                                              | fixme   | G5                                                                                  |
+| FR-11 | Settings and profiles     | `specs/fr-11.spec.ts`           | `/`                                              | fixme   | G3                                                                                  |
+| FR-12 | Deep mode                 | `specs/fr-12.spec.ts`           | `/`                                              | fixme   | G4                                                                                  |
+| FR-13 | Keyboard/accessibility    | `specs/fr-13.spec.ts`           | `/`                                              | fixme   | G2, G6                                                                              |
+| FR-14 | Onboarding                | `specs/fr-14.spec.ts`           | `/`                                              | fixme   | G3, G6                                                                              |
+| FR-15 | Browser support           | —                               | —                                                | n/a     | Out of scope: the suite is Chromium-only; Firefox coverage needs a separate runner. |
 
-> Every in-page FR (FR-1 … FR-13) is additionally blocked by **G6** (the runtime
-> scripts are not registered, so the harness must do it) and by **G7/G8** (the
-> bridge ack and the command reply never reach the content script). The
-> per-FR blockers above name the _specific_ missing wiring that each spec will
-> assert once that FR is implemented.
+> Slice A closed **G1**, **G7** and **G8**; the three `passing` rows above are the
+> specs it unblocked. Every remaining in-page FR is additionally blocked by **G6**
+> (the runtime scripts are not registered, so the harness must do it until Slice D)
+> and, where it renders the panel, by **G2/G3** (the shell and screens are not
+> mounted until Slice B). The per-FR blockers above name the _specific_ missing
+> wiring that each spec will assert once that FR is implemented.
 
-## The smoke test
+## The passing specs
 
-`specs/smoke.spec.ts` proves the harness end to end: the unpacked build loads
+`specs/smoke.spec.ts` proves the bootstrap end to end: the unpacked build loads
 (valid extension id), the MV3 service worker starts and answers
-(`chrome.runtime.getManifest()`), the runtime content scripts inject, and the
-widget root plus its status node mount in the page.
+(`chrome.runtime.getManifest()`), the runtime content scripts inject, the secure
+bridge connects and a `command.ping` round trip sets the in-page status to `pong`.
 
-It does **not** assert the in-page `pong` status, because the `command.ping`
-round trip cannot complete with the current wiring. That is a real finding, not a
-test limitation:
+`specs/capture.spec.ts` proves the capture wiring (G1 closed): after the bridge
+connects, a real page `fetch` is intercepted by the agent's patched `fetch`,
+batched as a typed `network` event, forwarded by the content script and stored in
+the worker's per-tab `storage.session` session.
 
-- **G7** — the main-world agent adopts the handshake and posts the ack, but the
-  ack never reaches the content script (`agent unavailable`).
-- **G8** — with a bridge present, the worker's reply is a `Result` envelope that
-  the content script's `parseResult` rejects (`ping failed`).
-
-Both are recorded in [`INTEGRATION-GAPS.md`](./INTEGRATION-GAPS.md). Assert the
-status in this smoke test once they are fixed.
+`specs/bridge-security.spec.ts` proves the bridge is still hardened (G7 fix did
+not weaken it): the `/spy` fixture registers a **capturing** `message` listener
+after the agent — the strongest position a page script can reach — and it must
+observe zero bridge messages, zero transferred ports and zero capture batches,
+while the bridge still reports `pong`.
 
 Because the extension does not register its own runtime scripts yet (G6), the
 harness registers both bundles from the worker across all pages
