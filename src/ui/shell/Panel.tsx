@@ -1,7 +1,7 @@
 import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { t } from '../i18n';
-import { panelRect, resizePanelSize, type DockMode, type Size, type Viewport } from './geometry';
+import { panelRect, resizePanelSize, type DockMode, type Size, type Viewport } from '../../core';
 
 /** Props for {@link Panel}. */
 export interface PanelProps {

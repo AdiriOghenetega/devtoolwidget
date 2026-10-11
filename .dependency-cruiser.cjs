@@ -72,6 +72,25 @@ module.exports = {
         dependencyTypesNot: ['type-only'],
       },
     },
+    {
+      name: 'document-start-content-must-not-statically-import-ui',
+      severity: 'error',
+      comment:
+        'The document_start content bootstrap must not statically import src/ui; the Preact shell and its signals-backed store are dynamically imported on first interaction so no UI is loaded before it is needed (ADR 0019). Only the dynamic boundary (lazy-shell.ts) may import ui. `lazy-shell.ts` is excluded via pathNot.',
+      from: { path: 'src/entrypoints/content/', pathNot: 'lazy-shell\\.ts$' },
+      to: { path: 'src/ui/', dependencyTypesNot: ['dynamic-import'] },
+    },
+    {
+      name: 'document-start-content-must-not-statically-import-preact',
+      severity: 'error',
+      comment:
+        'The document_start content bootstrap must not statically import Preact or @preact/signals; they belong to the lazily imported UI chunk (ADR 0019). Type-only imports are allowed; dynamic imports from lazy-shell.ts are excluded.',
+      from: { path: 'src/entrypoints/content/', pathNot: 'lazy-shell\\.ts$' },
+      to: {
+        path: 'node_modules/(preact|@preact/signals)/',
+        dependencyTypesNot: ['dynamic-import', 'type-only'],
+      },
+    },
   ],
   options: {
     tsPreCompilationDeps: true,

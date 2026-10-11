@@ -1,6 +1,6 @@
 # 19. Split the injected scripts: critical document_start, deferred performance and lazy UI
 
-- Status: Accepted
+- Status: Accepted (amended 2026-10-11 by the lazy-mount PR — see "Amendment: measured reality")
 - Date: 2026-10-11
 
 ## Context
@@ -83,3 +83,58 @@ dependency rule/test, and a size-limit entry gates the content bootstrap at 10 k
 2. Two scripts must coordinate over the same bridge and pipeline.
 3. `document_idle` timing varies by page; the launcher must still appear promptly
    for the user.
+
+## Amendment: measured reality (lazy-mount PR)
+
+The lazy-mount PR deferred the UI mount (decision (b)) but could not satisfy the
+content-bootstrap budget, and the measurements changed the conclusion. Recorded here
+rather than silently rewriting the decision above.
+
+### (b) was implemented as deferred _execution_, not a code-split chunk
+
+**WXT does not code-split content scripts.** Content scripts are bundled in IIFE lib
+mode (`formats: ["iife"]`), so a `import('./shell')` inside the content script is
+**inlined** into the single `content-scripts/content.js`; WXT's own docs confirm there
+is no built-in ESM/code-splitting support for content scripts
+([wxt-dev/wxt#357](https://github.com/wxt-dev/wxt/issues/357)). The shipped change
+therefore: mounts a tiny vanilla launcher at `DOMContentLoaded`, defers the Preact
+shell/panel/signals store to the first interaction, and keeps only the bridge,
+handshake and routing at `document_start`. It does **not** download a separate UI
+chunk on first interaction. The docs must not claim otherwise.
+
+### Supporting change: shared `core/placement`
+
+The launcher placement/drag maths and the `ShellPersistence` contract moved to
+`core/placement` (pure, no browser APIs) so the `document_start` vanilla launcher and
+the lazy shell share one implementation (no duplication) and the bootstrap never
+statically imports `ui` or Preact. That is enforced by the dependency-cruiser rule
+`document-start-content-must-not-statically-import-ui` (plus the sibling Preact rule)
+and a source-level test in `src/entrypoints/content/content-bootstrap.test.ts`.
+
+### The content-bootstrap ≤ 10 kB budget is OPEN
+
+Measured with the same CDP `TaskDuration` ablation as `docs/PERFORMANCE.md`:
+
+- The shipped `content-scripts/content.js` is **60.03 kB gz** (was 57.8 kB before, so
+  the deferral did not shrink it — deferred code is still parsed).
+- With the UI import removed entirely (build variant), the bootstrap **alone** is
+  **40.27 kB gz**, dominated by **Zod** on the `document_start` path (protocol
+  `parseMessage` / `parsePanelMessage` / `parseCommandResponse`); Preact and the
+  platform adapters are absent.
+- Ablation "content-only" overhead is **+77 ms before and +80–82 ms after** (unchanged
+  within noise). Deferring the render recovered essentially **none** of the ~77 ms.
+
+So the ≤ 10 kB content-bootstrap budget is **not met and is open**. Two follow-up gaps
+carry the decision, both logged in `docs/INTEGRATION-GAPS.md`:
+
+- **G14** — a real ESM lazy chunk via WXT's manual split (custom module + second Vite
+  ESM build + `web_accessible_resources`), noting that `web_accessible_resources`
+  exposes the bundle to pages and that `use_dynamic_url` should be evaluated.
+- **G15** — remove Zod from the `document_start` content path, preferring a design
+  where the content script relays batches with cheap size/shape checks and the service
+  worker remains the validating boundary (rather than adding more hand-written
+  guards).
+
+Until those land, `.size-limit.mjs` gates `content.js` with a **temporary
+no-regression ratchet** (measured + small margin), not the aspirational two-budget
+split.

@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import type { JSX } from 'preact';
 import { describe, expect, it, vi } from 'vitest';
-import { Shell, type LoadPanel } from './Shell';
+import { Shell, type LoadPanel, type ShellControlsRef } from './Shell';
 import type { ShellPersistence } from './persistence';
 
 function fakePersistence(options: { readonly disabled?: boolean } = {}): ShellPersistence {
@@ -96,5 +96,52 @@ describe('Shell', () => {
       expect(open).toHaveBeenCalledTimes(1);
     });
     expect(loadPanel).not.toHaveBeenCalled();
+  });
+
+  it('opens the panel on mount when initialOpen is set (first-interaction handoff)', async () => {
+    const loadPanel = vi.fn<LoadPanel>(() => Promise.resolve(panelModule()));
+    render(
+      <Shell
+        origin="https://a.test"
+        topFrame
+        score={90}
+        errorCount={0}
+        persistence={fakePersistence()}
+        loadPanel={loadPanel}
+        initialOpen
+      />,
+    );
+
+    await waitFor(() => {
+      expect(loadPanel).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText('PANEL')).toBeTruthy();
+  });
+
+  it('exposes an imperative open through the controls ref', async () => {
+    const loadPanel = vi.fn<LoadPanel>(() => Promise.resolve(panelModule()));
+    const controls: ShellControlsRef = { current: null };
+    render(
+      <Shell
+        origin="https://a.test"
+        topFrame
+        score={90}
+        errorCount={0}
+        persistence={fakePersistence()}
+        loadPanel={loadPanel}
+        controls={controls}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(controls.current).not.toBeNull();
+    });
+    expect(loadPanel).not.toHaveBeenCalled();
+    await act(() => {
+      controls.current?.open();
+    });
+    await waitFor(() => {
+      expect(loadPanel).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -6,8 +6,8 @@
 // reachable graph (hand-written bridge guards) and moving the settings schema to
 // `protocol`.
 //
-// Measured, gzipped (2026-10-11): agent 12.60 kB, background 43.23 kB,
-// content (UI host) 56.15 kB.
+// Measured, gzipped (2026-10-11): agent 14.34 kB, background 44.54 kB,
+// content (bootstrap + deferred UI) 60.03 kB.
 export default [
   {
     name: 'agent (main world)',
@@ -27,10 +27,17 @@ export default [
     gzip: true,
   },
   {
-    name: 'content (UI host)',
+    name: 'content (bootstrap + deferred UI)',
     path: '.output/chrome-mv3/content-scripts/content.js',
-    // PRD section 4 lazy-loaded UI budget.
-    limit: '120 kB',
+    // TEMPORARY no-regression ratchet (lazy-mount PR): WXT inlines content-script
+    // dynamic imports, so the UI is deferred in execution but not yet split into a
+    // separate chunk; this one bundle currently measures 60.03 kB gz. The PRD
+    // section 4 "content bootstrap <= 10 kB + lazy UI chunks <= 120 kB" budgets stay
+    // open until the ESM lazy-chunk and Zod-removal decisions (see
+    // docs/INTEGRATION-GAPS.md and ADR 0019). This 62 kB cap is the measured size
+    // plus a small margin; it is expected to shrink and be replaced by the two
+    // split budgets, not raised.
+    limit: '62 kB',
     gzip: true,
   },
 ];

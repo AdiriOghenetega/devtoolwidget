@@ -28,7 +28,7 @@ Non-goals
 Engineering (must hit)
 • TypeScript strict mode with zero any and zero type errors.
 • Line coverage of at least 90% in src/core, at least 80% overall.
-• Split injected budgets (ADR 0019): critical document_start agent ≤ 15 KB gzipped (console/network patch, bridge, batching); deferred performance script ≤ 25 KB gzipped, injected at document_idle (web-vitals, long tasks, observers, `buffered: true`); content bootstrap at document_start ≤ 10 KB gzipped (bridge, handshake, routing, tiny vanilla launcher); lazy UI chunks ≤ 120 KB gzipped in total, imported on first interaction.
+• Split injected budgets (ADR 0019, amended by the lazy-mount PR with measurements in docs/PERFORMANCE.md): critical document_start agent ≤ 15 KB gzipped (console/network patch, bridge, batching); deferred performance script ≤ 25 KB gzipped, injected at document_idle (web-vitals, long tasks, observers, `buffered: true`); **content bootstrap budget is OPEN pending a decision** — WXT inlines content-script dynamic imports (IIFE), so the shipped content bundle is currently a single file (~60 KB gzipped) in which the UI is deferred in *execution* but not split into a separate chunk, and the bootstrap without the UI already measures ~40 KB gzipped because Zod validates the document_start path; the target of a ≤ 10 KB content bootstrap plus ≤ 120 KB lazy UI chunks **imported as a separate chunk on first interaction** is tracked as gaps G14 (real ESM lazy chunk) and G15 (Zod-free document_start path) in docs/INTEGRATION-GAPS.md.
 • Added main-thread cost during page load under 50 ms on a mid-range laptop (measured by the benchmark in Prompt 8.2).
 • Zero critical or serious axe violations in the UI.
 Adoption (aspirational, do not let them drive scope)
@@ -105,7 +105,7 @@ FR-15 Browser support
 • Chromium (Chrome, Edge, Brave) first. Firefox build via WXT with feature detection. Deep mode is Chromium-only.
 7. Non-functional requirements
 Performance
-• The document_start footprint must be tiny: a minimal bootstrap injects the main-world agent, and the UI is lazy-loaded only when the panel is first opened.
+• The document_start footprint must be tiny: a minimal bootstrap injects the main-world agent, and the UI mount is deferred until the panel is first opened. Current shipped state: the UI is deferred in execution but is still bundled in the content script (no separate chunk yet) — see the OPEN content-bootstrap budget in section 4 and gap G14.
 • Idle overhead under 2% of main-thread time. Memory cap of 50 MB for all buffers. Event batching every 100 ms.
 Privacy
 • No network calls made by the extension itself. No telemetry in v1.0.
